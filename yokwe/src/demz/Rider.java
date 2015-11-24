@@ -1,0 +1,51 @@
+package demz;
+
+import com.google.maps.DirectionsApi;
+import com.google.maps.GeoApiContext;
+import com.google.maps.model.*;
+
+//Smooth Cat Rider
+public class Rider {
+	private String id;
+	private String origin;
+	private String destination;
+	
+	public Rider(String newId, String newOrigin, String newDest){
+	
+		id = newId;
+		origin = newOrigin;
+		destination = newDest;
+
+		//Get origin and destination coordinates. There's probably a better way to do this.
+		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
+
+		DirectionsRoute[] routes;
+		try {
+			routes = DirectionsApi.newRequest(context)
+					.origin(newOrigin)
+					.destination(newDest).await();
+			
+			origin = routes[0].legs[0].startLocation.toString();
+			destination = routes[0].legs[0].endLocation.toString();
+			
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public String getID(){
+		return id;
+	}
+	
+	public String getOrigin(){
+		return origin;
+	}
+	
+	public String getDestination(){
+		return destination;
+	}
+	
+	
+}

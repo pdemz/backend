@@ -7,18 +7,16 @@ public class Driver {
 
 	
 	private String id;
+	private String accessToken;
 	private int limit = 0;
-	
-	//duration in seconds
-	private long duration = 0;
-	
-	//Origin and destination stored as string and LatLng
-	private String origin;
+	private long duration = 0; //duration in seconds -- will be used for ETA's
+	private String origin; //Origin and destination stored as coordinate string
 	private String destination;
 	
-	public Driver(String newId, int newLimit, String newOrigin, String newDestination){	
+	public Driver(String newId, String newAccessToken, int newLimit, String newOrigin, String newDestination){	
 		id = newId;
 		limit = newLimit;
+		accessToken = newAccessToken;
 		
 		//Now get the time of the route, in seconds, with no detours
 		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
@@ -42,7 +40,10 @@ public class Driver {
 		
 	}
 	
-
+	public String getAccessToken(){
+		return accessToken;
+	}
+	
 	public String getID(){
 		return id;
 	}

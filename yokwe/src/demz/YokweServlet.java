@@ -15,7 +15,8 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.mysql.jdbc.jdbc2.optional.*;
-
+import com.notnoop.apns.APNS;
+import com.notnoop.apns.ApnsService;
 import com.google.maps.GeoApiContext;
 import com.google.maps.GeocodingApi;
 import com.google.maps.DirectionsApi;
@@ -29,6 +30,8 @@ import com.google.maps.model.GeocodingResult;
 public class YokweServlet extends HttpServlet {
 	
 	private ArrayList<Driver> drivers= new ArrayList<Driver>();
+	private ArrayList<Rider> riders = new ArrayList<Rider>();
+	private DatabaseController dbController = new DatabaseController();
 	
 	private static final long serialVersionUID = 1L;
        
@@ -45,17 +48,20 @@ public class YokweServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-
-		String id = request.getParameter("id");
-		String origin = request.getParameter("origin");
-		String destination = request.getParameter("destination");	
-		Rider rider = new Rider(id, origin, destination);
+		String type = request.getParameter("type");
+		String userID = request.getParameter("userID");
+		String accessToken = request.getParameter("accessToken");
+			
+		if (type.equals("rideRequest"))
+			rideHandler(request, response, userID, accessToken);
+		else if (type.equals("driveRequest"))
+			driveHandler(request, response, userID, accessToken);
 		
-		loadDrivers();
-		
-		String driverNames = rideMatch(rider);
-		response.getWriter().println(driverNames);
-		response.getWriter().println("Done.");
+		//Once a selection is made, notify the selectee, and update the DB to reflect the match
+		else if(type.equals("driverSelection"))
+			driverSelectionNotification(request.getParameter("driverID"));
+		else if(type.contentEquals("riderSelection"))
+			riderSelectionNotification(request.getParameter("riderID"));
 		
 	}
 
@@ -64,17 +70,93 @@ public class YokweServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
+		String type = request.getParameter("type");
+		String userID = request.getParameter("userID");
+		String accessToken = request.getParameter("accessToken");
+			
+		if (type.equals("rideRequest"))
+			rideHandler(request, response, userID, accessToken);
+		else if (type.equals("driveRequest"))
+			driveHandler(request, response, userID, accessToken);
 		
-		String id = request.getParameter("id");
+		//Once a selection is made, notify the selectee, and update the DB to reflect the match
+		else if(type.equals("driverSelection"))
+			driverSelectionNotification(request.getParameter("driverID"));
+		else if(type.contentEquals("riderSelection"))
+			riderSelectionNotification(request.getParameter("riderID"));
+
+	}
+	
+	//Notify driver that a ride has been requested
+	private void driverSelectionNotification(String driverID){
+		//Get apnsToken from database
+		String deviceToken = dbController.getDriverApnsToken(driverID);
+		
+		ApnsService service =
+			    APNS.newService()
+			    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten1")
+			    .withSandboxDestination()
+			    .build();
+		
+		String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
+		service.push(deviceToken, payload);
+		
+	}
+	
+	//Notify rider that a driver has been found
+	private void riderSelectionNotification(String riderID){
+		//Get apnsToken from database
+		String deviceToken = dbController.getRiderApnsToken(riderID);
+		
+		ApnsService service =
+			    APNS.newService()
+			    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten1")
+			    .withSandboxDestination()
+			    .build();
+		
+		String payload = APNS.newPayload().alertBody("A driver is available.").build();
+		service.push(deviceToken, payload);
+		
+	}
+	
+	private void rideHandler(HttpServletRequest request, HttpServletResponse response, String userID, String accessToken) throws ServletException, IOException {
+		
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
-		Rider rider = new Rider(id, origin, destination);
+		Rider rider = new Rider(userID, accessToken, origin, destination);
 		
-		loadDrivers();
+		storeRider(rider); //Store the rider in the database
+		loadDrivers(); //Load the drivers into the driver list
 		
-		//Prints in response the user IDs of the drivers
+		//Prints the user IDs of the drivers to the response
 		String drivers = rideMatch(rider);
-		response.getWriter().println(drivers);
+		response.getWriter().print(drivers);
+		
+	}
+	
+	private void driveHandler(HttpServletRequest request, HttpServletResponse response, String userID, String accessToken) throws ServletException, IOException {
+		
+		String origin = request.getParameter("origin");
+		String destination = request.getParameter("destination");	
+		int limit = Integer.parseInt(request.getParameter("limit"));
+		Driver driver = new Driver(userID, accessToken, limit, origin, destination);
+		
+		storeDriver(driver);
+		loadRiders(); //Load the riders into the rider list
+		
+		//Prints the user IDs of the drivers to the response
+		String riders = driveMatch(driver);
+		response.getWriter().print(riders);
+		
+	}
+	
+	private void storeRider(Rider rider){
+		dbController.storeRider(rider);
+		
+	}
+	
+	private void storeDriver(Driver driver){
+		dbController.storeDriver(driver);
 		
 	}
 	
@@ -103,8 +185,50 @@ public class YokweServlet extends HttpServlet {
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if ((seconds - driver.getDuration()) <= driver.getLimit() * 60) {
-					returnString += driver.getID() + ";";
+					returnString += driver.getID() + "," + driver.getAccessToken() + ";";
 					System.out.println(Math.ceil((seconds - driver.getDuration()) / 60));
+				}
+
+			} catch (Exception e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
+
+		}
+
+		return returnString;
+		
+	}
+	
+	private String driveMatch(Driver driver){
+		
+		String returnString = "";
+		
+		//In order to access the API
+		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		
+		DirectionsRoute[] routes;
+		long seconds;
+		long addedTime;
+
+		// For every driver in the system, check if the rider is within their
+		// set limit
+		for (Rider rider : riders) {
+			try {
+				//Get the route distance for when the driver picks up the rider
+				routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
+						.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
+						.await();
+
+				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+						+ routes[0].legs[2].duration.inSeconds;
+				addedTime = seconds - driver.getDuration();
+				
+				// This is checking to see that the amount of time the driver must go out of their way
+				// is less than their set limit
+				if (addedTime <= (driver.getLimit() * 60)) {
+					returnString += rider.getID() + "," + rider.getAccessToken() + "," + rider.getOrigin() + "," + rider.getDestination() + "," + Math.floor(addedTime/60) + ";";
+					System.out.println(Math.floor((seconds - driver.getDuration()) / 60));
 				}
 
 			} catch (Exception e) {
@@ -124,18 +248,7 @@ public class YokweServlet extends HttpServlet {
 		
 		try {
 			
-			System.out.println("Got here first");
-			MysqlDataSource dataSource = new MysqlDataSource();
-			dataSource.setUser("demz");
-			dataSource.setPassword("Iheartnewyork!1");
-			dataSource.setServerName("myfirstdatabase.cgrwwpjxf5ev.us-west-2.rds.amazonaws.com");
-			dataSource.setPort(3306);
-			//dataSource.setDatabaseName("myfirstdatabase");
-
-			Connection conn = dataSource.getConnection();
-			java.sql.Statement stmt = conn.createStatement();
-			stmt.executeQuery("USE demzdb");
-			ResultSet rs = stmt.executeQuery("SELECT * FROM driver");
+			ResultSet rs = dbController.getAllDrivers();
 
 			while (rs.next()) {
 				
@@ -143,16 +256,45 @@ public class YokweServlet extends HttpServlet {
 	            int limit = rs.getInt("timeLimit");
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
+	            String accessToken = rs.getString("accessToken");
 
-				Driver newb = new Driver(id, limit, origin, destination);
+				Driver newb = new Driver(id, accessToken, limit, origin, destination);
 				driverList.add(newb);
 			}
 			
 			rs.close();
-			stmt.close();
-			conn.close();
 			drivers = driverList;
 			System.out.println("Drivers added successfully.");
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+	}
+	
+	private void loadRiders(){
+		
+		ArrayList<Rider> riderList= new ArrayList<Rider>();
+		
+		try {
+			
+			ResultSet rs = dbController.getAllRiders();
+
+			while (rs.next()) {
+				
+				String id = rs.getString("id");
+	            String origin = rs.getString("origin");
+	            String destination = rs.getString("destination");
+	            String accessToken = rs.getString("accessToken");
+
+				Rider newb = new Rider(id, accessToken, origin, destination);
+				riderList.add(newb);
+			}
+			
+			rs.close();
+			riders = riderList;
+			System.out.println("Riders added successfully.");
 
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block

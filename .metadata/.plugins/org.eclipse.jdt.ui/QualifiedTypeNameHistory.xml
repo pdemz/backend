@@ -11,4 +11,6 @@
 <fullyQualifiedTypeName name="com.mysql.jdbc.Statement"/>
 <fullyQualifiedTypeName name="java.sql.ResultSet"/>
 <fullyQualifiedTypeName name="java.sql.SQLException"/>
+<fullyQualifiedTypeName name="com.notnoop.apns.ApnsService"/>
+<fullyQualifiedTypeName name="com.notnoop.apns.APNS"/>
 </qualifiedTypeNameHistroy>

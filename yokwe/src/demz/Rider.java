@@ -10,13 +10,17 @@ public class Rider {
 	private String accessToken;
 	private String origin;
 	private String destination;
+	private String apnsToken;
+	private String driverID;
 	
-	public Rider(String newId, String newAccessToken, String newOrigin, String newDest){
+	public Rider(String newId, String newAccessToken, String newApnsToken, String newOrigin, String newDest, String newDriverID){
 	
 		accessToken = newAccessToken;
 		id = newId;
 		origin = newOrigin;
 		destination = newDest;
+		apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
+		driverID = newDriverID;
 
 		//Get origin and destination coordinates. There's probably a better way to do this.
 		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
@@ -50,6 +54,14 @@ public class Rider {
 	
 	public String getDestination(){
 		return destination;
+	}
+	
+	public String getApnsToken(){
+		return apnsToken;
+	}
+	
+	public String getDriverID(){
+		return driverID;
 	}
 	
 	

@@ -12,11 +12,13 @@ public class Driver {
 	private long duration = 0; //duration in seconds -- will be used for ETA's
 	private String origin; //Origin and destination stored as coordinate string
 	private String destination;
+	private String apnsToken;
 	
-	public Driver(String newId, String newAccessToken, int newLimit, String newOrigin, String newDestination){	
+	public Driver(String newId, String newAccessToken, String newApnsToken, int newLimit, String newOrigin, String newDestination){	
 		id = newId;
 		limit = newLimit;
 		accessToken = newAccessToken;
+		apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
 		
 		//Now get the time of the route, in seconds, with no detours
 		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
@@ -62,6 +64,10 @@ public class Driver {
 	
 	public long getDuration(){
 		return duration;
+	}
+	
+	public String getApnsToken(){
+		return apnsToken;
 	}
 	
 }

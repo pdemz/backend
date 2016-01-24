@@ -2,7 +2,6 @@ package demz;
 
 import java.io.*;
 import java.util.ArrayList;
-import java.util.List;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -10,18 +9,14 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
-import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
-import com.mysql.jdbc.jdbc2.optional.*;
 import com.notnoop.apns.APNS;
 import com.notnoop.apns.ApnsService;
 import com.google.maps.GeoApiContext;
-import com.google.maps.GeocodingApi;
 import com.google.maps.DirectionsApi;
 import com.google.maps.model.DirectionsRoute;
-import com.google.maps.model.GeocodingResult;
 
 /**
  * Servlet implementation class YokweServlet
@@ -59,9 +54,9 @@ public class YokweServlet extends HttpServlet {
 		
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
 		else if(type.equals("driverSelection"))
-			driverSelectionNotification(request.getParameter("driverID"));
+			driverSelectionNotification(request.getParameter("driverID"), userID);
 		else if(type.contentEquals("riderSelection"))
-			riderSelectionNotification(request.getParameter("riderID"));
+			riderSelectionNotification(request.getParameter("riderID"), userID);
 		
 	}
 
@@ -81,41 +76,106 @@ public class YokweServlet extends HttpServlet {
 		
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
 		else if(type.equals("driverSelection"))
-			driverSelectionNotification(request.getParameter("driverID"));
+			driverSelectionNotification(request.getParameter("driverID"), userID);
 		else if(type.contentEquals("riderSelection"))
-			riderSelectionNotification(request.getParameter("riderID"));
+			riderSelectionNotification(request.getParameter("riderID"), userID);
+		
+		//Once the selectee accepts the ride, update driver availability
+		else if(type.equals("accept"))
+			accept(userID);
+		
+		//If ride is declined or canceled, rider.driverID = NULL and driver.available = true
+		//Notify client. On notification received, display a view to alert what happened. If driverID == null and driver.available == true
+		//Always go back to homescreen
+		else if(type.equals("cancel"))
+			cancel(userID);
+		
+		//When app polls the server, check if they have any requests
+		else if(type.equals("update"))
+			update(request, response);
 
 	}
 	
+	private void accept(String userID){
+		dbController.makeUnavailable(userID);
+		
+	}
+	
+	private void cancel(String userID){
+		dbController.reset(userID);
+	}
+	
+	//Check if user has received a request
+	private void update(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
+		//will return type;userID;accessToken;origin;destination;driver.available;addedTime
+		System.out.println("UID: " + request.getParameter("userID"));
+		String dbString = dbController.getPartner(request.getParameter("userID"));
+		String[] split = dbString.split(";");
+		
+		if(split[0].equals("rider")){
+			Rider rider = dbController.getRider(split[1]);
+			Driver driver = dbController.getDriver(request.getParameter("userID"));
+			String responseString = dbString+";"+getAddedTime(driver,rider);
+			response.getWriter().print(responseString);
+			System.out.println(responseString);
+			
+		}else if(split[0].equals("driver")){
+			Driver driver = dbController.getDriver(split[1]);
+			Rider rider = dbController.getRider(request.getParameter("userID"));
+			String responseString = dbString+";"+getAddedTime(driver,rider);
+			response.getWriter().print(responseString);
+			System.out.println(responseString);
+			
+		}else
+			response.getWriter().print("nothing");	
+		
+	}
+	
 	//Notify driver that a ride has been requested
-	private void driverSelectionNotification(String driverID){
+	private void driverSelectionNotification(String driverID, String userID){
+		//Store driverID with rider row
+		dbController.updateDriverID(userID, driverID);
 		//Get apnsToken from database
 		String deviceToken = dbController.getDriverApnsToken(driverID);
 		
-		ApnsService service =
-			    APNS.newService()
-			    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten1")
-			    .withSandboxDestination()
-			    .build();
-		
-		String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
-		service.push(deviceToken, payload);
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
+			service.push(deviceToken, payload);
+			
+			String deviceTokenTwo = dbController.getRiderApnsToken(userID);
+			System.out.println("This token was retrieved: " + deviceTokenTwo);
+			String payloadz = APNS.newPayload().alertBody("You just caused a push notification to be sent.").build();
+			service.push(deviceTokenTwo, payloadz);
+			
+			System.out.println("A token should have been sent to both the rider and driver.");
+		}
 		
 	}
 	
 	//Notify rider that a driver has been found
-	private void riderSelectionNotification(String riderID){
+	private void riderSelectionNotification(String riderID, String driverID){
+		//Update driverID for rider
+		dbController.updateDriverID(riderID, driverID);
+		
 		//Get apnsToken from database
 		String deviceToken = dbController.getRiderApnsToken(riderID);
 		
-		ApnsService service =
-			    APNS.newService()
-			    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten1")
-			    .withSandboxDestination()
-			    .build();
-		
-		String payload = APNS.newPayload().alertBody("A driver is available.").build();
-		service.push(deviceToken, payload);
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("A driver is available.").build();
+			service.push(deviceToken, payload);
+		}
 		
 	}
 	
@@ -123,7 +183,8 @@ public class YokweServlet extends HttpServlet {
 		
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
-		Rider rider = new Rider(userID, accessToken, origin, destination);
+		String apns = request.getParameter("apnsToken");
+		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
 		storeRider(rider); //Store the rider in the database
 		loadDrivers(); //Load the drivers into the driver list
@@ -139,7 +200,8 @@ public class YokweServlet extends HttpServlet {
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
 		int limit = Integer.parseInt(request.getParameter("limit"));
-		Driver driver = new Driver(userID, accessToken, limit, origin, destination);
+		String apns = request.getParameter("apnsToken");
+		Driver driver = new Driver(userID, accessToken, apns, limit, origin, destination);
 		
 		storeDriver(driver);
 		loadRiders(); //Load the riders into the rider list
@@ -148,6 +210,32 @@ public class YokweServlet extends HttpServlet {
 		String riders = driveMatch(driver);
 		response.getWriter().print(riders);
 		
+	}
+	
+	private long getAddedTime(Driver driver, Rider rider){
+		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		DirectionsRoute[] routes;
+		long seconds;
+		long addedTime;
+
+		//Get the route distance for when the driver picks up the rider
+		try {
+			routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
+					.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
+					.await();
+
+			seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+					+ routes[0].legs[2].duration.inSeconds;
+			addedTime = seconds - driver.getDuration();
+			
+			return addedTime/60;		
+
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+		return 0;
 	}
 	
 	private void storeRider(Rider rider){
@@ -184,9 +272,9 @@ public class YokweServlet extends HttpServlet {
 				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
-				if ((seconds - driver.getDuration()) <= driver.getLimit() * 60) {
-					returnString += driver.getID() + "," + driver.getAccessToken() + ";";
-					System.out.println(Math.ceil((seconds - driver.getDuration()) / 60));
+				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
+					//userID;accessToken_
+					returnString += driver.getID() + ";" + driver.getAccessToken() + "_";
 				}
 
 			} catch (Exception e) {
@@ -209,7 +297,6 @@ public class YokweServlet extends HttpServlet {
 		
 		DirectionsRoute[] routes;
 		long seconds;
-		long addedTime;
 
 		// For every driver in the system, check if the rider is within their
 		// set limit
@@ -222,13 +309,13 @@ public class YokweServlet extends HttpServlet {
 
 				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
 						+ routes[0].legs[2].duration.inSeconds;
-				addedTime = seconds - driver.getDuration();
 				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
-				if (addedTime <= (driver.getLimit() * 60)) {
-					returnString += rider.getID() + "," + rider.getAccessToken() + "," + rider.getOrigin() + "," + rider.getDestination() + "," + Math.floor(addedTime/60) + ";";
-					System.out.println(Math.floor((seconds - driver.getDuration()) / 60));
+				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
+					int addedTime = (int)(Math.floor(seconds-driver.getDuration()));
+					//id;accessToken;origin;destination;addedTime_
+					returnString += rider.getID() + ";" + rider.getAccessToken() + ";" + rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + "_";
 				}
 
 			} catch (Exception e) {
@@ -257,8 +344,9 @@ public class YokweServlet extends HttpServlet {
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
 	            String accessToken = rs.getString("accessToken");
+	            String apnsToken = rs.getString("apnsToken");
 
-				Driver newb = new Driver(id, accessToken, limit, origin, destination);
+				Driver newb = new Driver(id, accessToken, apnsToken, limit, origin, destination);
 				driverList.add(newb);
 			}
 			
@@ -287,8 +375,10 @@ public class YokweServlet extends HttpServlet {
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
 	            String accessToken = rs.getString("accessToken");
+	            String apnsToken = rs.getString("apnsToken");
+	            String driverID = rs.getString("driverID");
 
-				Rider newb = new Rider(id, accessToken, origin, destination);
+				Rider newb = new Rider(id, accessToken, apnsToken, origin, destination, driverID);
 				riderList.add(newb);
 			}
 			

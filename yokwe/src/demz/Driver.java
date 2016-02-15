@@ -14,6 +14,16 @@ public class Driver {
 	private String destination;
 	private String apnsToken;
 	
+	//Constructor for when a driver is recalled from the database, rather than added into it
+	public Driver(String newID, int newLimit, String newOrigin, String newDestination, long newDuration){
+		id = newID;
+		limit = newLimit;
+		origin = newOrigin;
+		destination = newDestination;
+		duration = newDuration;
+		
+	}
+	
 	public Driver(String newId, String newAccessToken, String newApnsToken, int newLimit, String newOrigin, String newDestination){	
 		id = newId;
 		limit = newLimit;

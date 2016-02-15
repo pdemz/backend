@@ -71,6 +71,11 @@ public class DatabaseController {
 					+ "', '" + rider.getDestination() + "', 1, NULL, '" + rider.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" 
 					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', apnsToken='" + rider.getApnsToken() + "';");
 			storeUser(rider.getID(), rider.getAccessToken(), rider.getApnsToken());
+			stmt.executeUpdate("INSERT INTO rideRequest (riderId, origin, destination) VALUES "
+					+ "('" + rider.getID() + "', '" + rider.getOrigin() 
+					+ "', '" + rider.getDestination() + "') ON DUPLICATE KEY UPDATE origin='" 
+					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "';");
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -87,6 +92,11 @@ public class DatabaseController {
 					+ "', destination='" + driver.getDestination() + "', apnsToken='" + driver.getApnsToken() +"';");
 
 			storeUser(driver.getID(), driver.getAccessToken(), driver.getApnsToken());
+			stmt.executeUpdate("INSERT INTO driveRequest (timeLimit, driverId, origin, destination, duration) VALUES "
+					+ "('" + driver.getLimit() + "', '" + driver.getID() + "', '" + driver.getOrigin() 
+					+ "', '" + driver.getDestination() + "', '" + driver.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
+					+ driver.getOrigin() + "', destination='" + driver.getDestination() + "', timeLimit='" + driver.getLimit() 
+					+ "', duration='" + driver.getDuration() + "';");
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -212,14 +222,30 @@ public class DatabaseController {
 		return apnsToken;
 	}
 	
+	public String getAccessToken(String userID){
+		String accessToken = null;
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM user WHERE id=" + userID);
+			if(rs.next()){
+				accessToken = rs.getString("accessToken");
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return accessToken;
+		
+	}
+	
 	public ResultSet getAllDrivers() throws SQLException{
-		ResultSet rs = stmt.executeQuery("SELECT * FROM driver");
+		ResultSet rs = stmt.executeQuery("SELECT * FROM driveRequest");
 		return rs;
 		
 	}
 	
 	public ResultSet getAllRiders() throws SQLException{
-		ResultSet rs = stmt.executeQuery("SELECT * FROM rider");
+		ResultSet rs = stmt.executeQuery("SELECT * FROM rideRequest");
 		return rs;
 	
 	}
@@ -227,7 +253,6 @@ public class DatabaseController {
 	public void close(){
 		try {
 			stmt.close();
-			conn.close();
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block

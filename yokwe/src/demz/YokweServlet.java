@@ -58,6 +58,7 @@ public class YokweServlet extends HttpServlet {
 		else if(type.contentEquals("riderSelection"))
 			riderSelectionNotification(request.getParameter("riderID"), userID);
 		
+		
 	}
 
 	/**
@@ -95,6 +96,7 @@ public class YokweServlet extends HttpServlet {
 		//When app polls the server, check if they have any requests and update other info
 		else if(type.equals("update"))
 			update(request, response);
+		
 
 	}
 	
@@ -188,7 +190,7 @@ public class YokweServlet extends HttpServlet {
 		String apns = request.getParameter("apnsToken");
 		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
-		storeRider(rider); //Store the rider in the database
+		storeRider(rider); //Store the ride request in the database
 		loadDrivers(); //Load the drivers into the driver list
 		
 		//Prints the user IDs of the drivers to the response
@@ -275,8 +277,10 @@ public class YokweServlet extends HttpServlet {
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
+					String accessToken = dbController.getAccessToken(driver.getID());
+					
 					//userID;accessToken_
-					returnString += driver.getID() + ";" + driver.getAccessToken() + "_";
+					returnString += driver.getID() + ";" + accessToken + "_";
 				}
 
 			} catch (Exception e) {
@@ -316,8 +320,11 @@ public class YokweServlet extends HttpServlet {
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					int addedTime = (int)((seconds-driver.getDuration())/60);
+					String accessToken = dbController.getAccessToken(rider.getID());
+					
 					//id;accessToken;origin;destination;addedTime_
-					returnString += rider.getID() + ";" + rider.getAccessToken() + ";" + rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + "_";
+					returnString += rider.getID() + ";" + accessToken + ";" 
+							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + "_";
 				}
 
 			} catch (Exception e) {
@@ -341,14 +348,13 @@ public class YokweServlet extends HttpServlet {
 
 			while (rs.next()) {
 				
-				String id = rs.getString("id");
+				String id = rs.getString("driverID");
 	            int limit = rs.getInt("timeLimit");
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
-	            String accessToken = rs.getString("accessToken");
-	            String apnsToken = rs.getString("apnsToken");
+	            long duration = rs.getLong("duration");
 
-				Driver newb = new Driver(id, accessToken, apnsToken, limit, origin, destination);
+				Driver newb = new Driver(id, limit, origin, destination, duration);
 				driverList.add(newb);
 			}
 			
@@ -373,14 +379,11 @@ public class YokweServlet extends HttpServlet {
 
 			while (rs.next()) {
 				
-				String id = rs.getString("id");
+				String id = rs.getString("riderID");
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
-	            String accessToken = rs.getString("accessToken");
-	            String apnsToken = rs.getString("apnsToken");
-	            String driverID = rs.getString("driverID");
 
-				Rider newb = new Rider(id, accessToken, apnsToken, origin, destination, driverID);
+				Rider newb = new Rider(id, null, null, origin, destination, null);
 				riderList.add(newb);
 			}
 			

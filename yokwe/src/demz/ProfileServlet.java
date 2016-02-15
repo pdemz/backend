@@ -49,6 +49,8 @@ public class ProfileServlet extends HttpServlet {
 			String phone = request.getParameter("phone");
 			dbController.updatePhone(id, accessToken, phone);
 		}
+		
+		dbController.close();
 	}
 
 	/**

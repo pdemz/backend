@@ -46,5 +46,10 @@
         	<artifactId>apns</artifactId>
         	<version>1.0.0.Beta6</version>
     	</dependency>
-	</dependencies>
+		<dependency>
+			<groupId>com.restfb</groupId>
+			<artifactId>restfb</artifactId>
+			<version>1.18.1</version>
+		</dependency>
+  </dependencies>
 </project>

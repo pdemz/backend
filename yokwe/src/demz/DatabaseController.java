@@ -31,7 +31,7 @@ public class DatabaseController {
 	public void makeUnavailable(String userID){
 		try {
 			ResultSet rs;
-			rs = stmt.executeQuery("SELECT * FROM rider WHERE id="+userID);
+			rs = stmt.executeQuery("SELECT * FROM rider WHERE id=" + userID);
 			if(rs.next())
 				stmt.executeUpdate("UPDATE driver SET available=false WHERE id=" + rs.getString("driverID"));
 			else
@@ -70,6 +70,7 @@ public class DatabaseController {
 					+ "('" + rider.getID() + "', '" + rider.getAccessToken() + "', '" + rider.getOrigin() 
 					+ "', '" + rider.getDestination() + "', 1, NULL, '" + rider.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" 
 					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', apnsToken='" + rider.getApnsToken() + "';");
+			storeUser(rider.getID(), rider.getAccessToken(), rider.getApnsToken());
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -85,6 +86,7 @@ public class DatabaseController {
 					+ "', '" + driver.getAccessToken() + "', '" + driver.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" + driver.getOrigin() 
 					+ "', destination='" + driver.getDestination() + "', apnsToken='" + driver.getApnsToken() +"';");
 
+			storeUser(driver.getID(), driver.getAccessToken(), driver.getApnsToken());
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -241,5 +243,74 @@ public class DatabaseController {
 			e.printStackTrace();
 		}
 	}
-
+	
+	public String getProfile(String userID, String accessToken){
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM user WHERE id='" + userID 
+					+ "' AND accessToken='" + accessToken + "';");
+			if(rs.next()){
+				String aboutMe = rs.getString("aboutMe");
+				String phone = rs.getString("phone");
+				return aboutMe + ";" + phone;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	public void updateProfile(String aboutMe, String userID, String accessToken){
+		aboutMe = aboutMe.replaceAll("'", "''");
+		System.out.println(aboutMe);
+		try {
+			stmt.executeUpdate("UPDATE user SET aboutMe='"+ aboutMe +"' WHERE id='" 
+					+ userID + "' AND accessToken='"
+					+ accessToken +"';");
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
+	public void storeUser(String id, String accessToken, String apnsToken){
+		System.out.println("Store was called.");
+		try{
+			stmt.executeUpdate("INSERT INTO "
+					+ "user (id, accessToken, apnsToken) VALUES ('" 
+					+ id + "', '" + accessToken + "', '" + apnsToken + "')"
+					+ "ON DUPLICATE KEY UPDATE "
+					+ "id='" + id + "', accessToken='" + accessToken + "', apnsToken='" + apnsToken + "';");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public boolean getUserExistance(String userId){
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM user WHERE id='" + userId + "';");
+			if(rs.next()){
+				return true;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return false;
+	}
+	
+	public void updatePhone(String userID, String accessToken, String phone){
+		try {
+			stmt.executeUpdate("UPDATE user SET phone='"+ phone +"' WHERE id='" 
+					+ userID + "' AND accessToken='"
+					+ accessToken +"';");
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
 }

@@ -1,5 +1,7 @@
+demz/FacebookHelper.class
 demz/PrivacyPolicy.class
 demz/DatabaseController.class
 demz/Driver.class
 demz/Rider.class
+demz/ProfileServlet.class
 demz/YokweServlet.class

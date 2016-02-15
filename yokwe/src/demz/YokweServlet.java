@@ -65,6 +65,8 @@ public class YokweServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
+		FacebookHelper.test();
+		
 		String type = request.getParameter("type");
 		String userID = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
@@ -90,7 +92,7 @@ public class YokweServlet extends HttpServlet {
 		else if(type.equals("cancel"))
 			cancel(userID);
 		
-		//When app polls the server, check if they have any requests
+		//When app polls the server, check if they have any requests and update other info
 		else if(type.equals("update"))
 			update(request, response);
 
@@ -313,7 +315,7 @@ public class YokweServlet extends HttpServlet {
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
-					int addedTime = (int)(Math.floor(seconds-driver.getDuration()));
+					int addedTime = (int)((seconds-driver.getDuration())/60);
 					//id;accessToken;origin;destination;addedTime_
 					returnString += rider.getID() + ";" + rider.getAccessToken() + ";" + rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + "_";
 				}

@@ -338,4 +338,65 @@ public class DatabaseController {
 		}
 	}
 	
+	public void createTrip(String riderID, String driverID){
+		try {
+			
+			String dOrigin = null;
+			String dDestination = null;
+			String rOrigin = null;
+			String rDestination = null;
+			long duration = 0;
+			long tripTime = 0;
+			long addedTime = 0;
+			
+			//Get addedTime from database
+			ResultSet rs = stmt.executeQuery("SELECT * FROM awaitingResponse WHERE driverID=" + driverID);
+			if(rs.next()){
+				addedTime = rs.getLong("addedTime");
+			}
+			
+			//Get origin and destination from driver
+			rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE id=" + driverID);
+			if(rs.next()){
+				dOrigin = rs.getString("origin");
+				dDestination = rs.getString("destination");
+				duration = rs.getLong("duration");
+				
+				//Get total trip time by adding driver duration and addedTime
+				tripTime = duration/60 + addedTime;
+			}
+			
+			//Get origin and destination from rider
+			rs = stmt.executeQuery("SELECT * FROM rideRequest WHERE id=" + riderID);
+			if(rs.next()){
+				rOrigin = rs.getString("origin");
+				rDestination = rs.getString("destination");
+			}
+			
+			//Store values into a new trip
+			stmt.executeUpdate("INSERT INTO trip (riderID, driverID, dOrigin, dDestination, rOrigin, rDestination, duration) VALUES "
+					+ "('" + riderID + "', '" + driverID + "', '" + dOrigin 
+					+ "', '" + dDestination + "', '" + rOrigin + "', '" + rDestination + "', '" + tripTime + "');");
+			
+			//Delete request from awaitingResponse
+			stmt.executeUpdate("DELETE FROM awaitingResponse WHERE driverID ='"+ driverID +"';");
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void createRequest(String riderID, String driverID, String addedTime, String type){
+		try {		
+			//Store values into a new trip
+			stmt.executeUpdate("REPLACE INTO awaitingResponse (riderID, driverID, requestType, addedTime) VALUES "
+					+ "('" + riderID + "', '" + driverID + "', '" + type
+					+ "', '" + Long.valueOf(addedTime) + "');");
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}
+	}
+	
 }

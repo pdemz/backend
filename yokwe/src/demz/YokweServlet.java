@@ -52,12 +52,6 @@ public class YokweServlet extends HttpServlet {
 		else if (type.equals("driveRequest"))
 			driveHandler(request, response, userID, accessToken);
 		
-		//Once a selection is made, notify the selectee, and update the DB to reflect the match
-		else if(type.equals("driverSelection"))
-			driverSelectionNotification(request.getParameter("driverID"), userID);
-		else if(type.contentEquals("riderSelection"))
-			riderSelectionNotification(request.getParameter("riderID"), userID);
-		
 		
 	}
 
@@ -79,11 +73,11 @@ public class YokweServlet extends HttpServlet {
 		
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
 		else if(type.equals("driverSelection"))
-			driverSelectionNotification(request.getParameter("driverID"), userID);
+			driverSelection(request.getParameter("driverID"), userID, request.getParameter("addedTime"));
 		else if(type.contentEquals("riderSelection"))
-			riderSelectionNotification(request.getParameter("riderID"), userID);
+			riderSelection(request.getParameter("riderID"), userID, request.getParameter("addedTime"));
 		
-		//Once the selectee accepts the ride, update driver availability
+		//Once the selectee accepts the ride, create a trip and delete the request
 		else if(type.equals("accept"))
 			accept(userID);
 		
@@ -101,7 +95,10 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private void accept(String userID){
-		dbController.makeUnavailable(userID);
+		//dbController.makeUnavailable(userID);
+		
+		//Delete request
+		//Create trip
 		
 	}
 	
@@ -135,11 +132,13 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
-	//Notify driver that a ride has been requested
-	private void driverSelectionNotification(String driverID, String userID){
-		//Store driverID with rider row
-		dbController.updateDriverID(userID, driverID);
-		//Get apnsToken from database
+	//Notify driver that a rider has requested them
+	private void driverSelection(String driverID, String riderID, String addedTime){
+		
+		//Create trip using info from rider and driver
+		dbController.createRequest(riderID, driverID, addedTime, "drive");
+		
+		//Get driver apnsToken from database
 		String deviceToken = dbController.getDriverApnsToken(driverID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
@@ -151,24 +150,20 @@ public class YokweServlet extends HttpServlet {
 			
 			String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
 			service.push(deviceToken, payload);
-			
-			String deviceTokenTwo = dbController.getRiderApnsToken(userID);
-			System.out.println("This token was retrieved: " + deviceTokenTwo);
-			String payloadz = APNS.newPayload().alertBody("You just caused a push notification to be sent.").build();
-			service.push(deviceTokenTwo, payloadz);
-			
-			System.out.println("A token should have been sent to both the rider and driver.");
+
+			System.out.println("A notification should have been sent to driver.");
 		}
 		
 	}
 	
-	//Notify rider that a driver has been found
-	private void riderSelectionNotification(String riderID, String driverID){
-		//Update driverID for rider
-		dbController.updateDriverID(riderID, driverID);
+	//Notify rider that they have been requested by a driver
+	private void riderSelection(String riderID, String driverID, String addedTime){
 		
-		//Get apnsToken from database
-		String deviceToken = dbController.getRiderApnsToken(riderID);
+		//Create trip using info from rider and driver
+		dbController.createRequest(riderID, driverID, addedTime, "ride");
+		
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getDriverApnsToken(riderID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
@@ -177,8 +172,10 @@ public class YokweServlet extends HttpServlet {
 				    .withProductionDestination()
 				    .build();
 			
-			String payload = APNS.newPayload().alertBody("A driver is available.").build();
+			String payload = APNS.newPayload().alertBody("You have been offered a ride.").build();
 			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to rider.");
 		}
 		
 	}

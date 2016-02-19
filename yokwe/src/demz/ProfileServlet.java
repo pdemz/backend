@@ -39,7 +39,7 @@ public class ProfileServlet extends HttpServlet {
 			String returnString = dbController.getProfile(id, accessToken);
 			response.getWriter().print(returnString);
 			
-		//returns true if the user is in the databse, otherwise it returns false
+		//returns true if the user is in the database, otherwise it returns false
 		}else if (type.equals("doesUserExist")){
 			boolean returnBool = dbController.getUserExistance(id);
 			response.getWriter().print(returnBool);

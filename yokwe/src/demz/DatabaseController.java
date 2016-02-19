@@ -104,11 +104,11 @@ public class DatabaseController {
 		
 	}
 	
-	public String getDriverApnsToken(String driverID){
+	public String getUserApnsToken(String userID){
 		String apnsToken = "";
 		ResultSet rs;
 		try {
-			rs = stmt.executeQuery("SELECT * FROM driver WHERE id=" + driverID);
+			rs = stmt.executeQuery("SELECT * FROM user WHERE id=" + userID);
 			if(rs.next()){
 				apnsToken = rs.getString("apnsToken");
 			}
@@ -205,21 +205,6 @@ public class DatabaseController {
 		
 		return rider;
 		
-	}
-	
-	public String getRiderApnsToken(String riderID){
-		String apnsToken = "";
-		try {
-			ResultSet rs = stmt.executeQuery("SELECT * FROM rider WHERE id=" + riderID);
-			if(rs.next()){
-				apnsToken = rs.getString("apnsToken");
-			}
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		return apnsToken;
 	}
 	
 	public String getAccessToken(String userID){
@@ -338,22 +323,36 @@ public class DatabaseController {
 		}
 	}
 	
-	public void createTrip(String riderID, String driverID){
+	public void createTrip(String requesterID, String requesteeID){
 		try {
 			
 			String dOrigin = null;
 			String dDestination = null;
 			String rOrigin = null;
 			String rDestination = null;
+			String driverID = null;
+			String riderID = null;
 			long duration = 0;
 			long tripTime = 0;
 			long addedTime = 0;
 			
-			//Get addedTime from database
-			ResultSet rs = stmt.executeQuery("SELECT * FROM awaitingResponse WHERE driverID=" + driverID);
+			//Get added time and determine which is driver and which is rider
+			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID=" + requesteeID
+					+ "AND requesterID='"+requesterID+"';");
 			if(rs.next()){
 				addedTime = rs.getLong("addedTime");
+				String type = rs.getString("type");
+				
+				if( type.equals("drive")){
+					driverID = requesterID;
+					riderID = requesteeID;
+				}else{
+					driverID = requesteeID;
+					riderID = requesterID;
+				}
 			}
+			
+			deletePendingResponse(requesterID, requesteeID);
 			
 			//Get origin and destination from driver
 			rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE id=" + driverID);
@@ -378,8 +377,9 @@ public class DatabaseController {
 					+ "('" + riderID + "', '" + driverID + "', '" + dOrigin 
 					+ "', '" + dDestination + "', '" + rOrigin + "', '" + rDestination + "', '" + tripTime + "');");
 			
-			//Delete request from awaitingResponse
-			stmt.executeUpdate("DELETE FROM awaitingResponse WHERE driverID ='"+ driverID +"';");
+			//Delete requests, now that a trip has been created. This is what it's all about, baby!
+			deleteRideRequest(riderID);
+			deleteDriveRequest(driverID);
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -387,11 +387,11 @@ public class DatabaseController {
 		
 	}
 	
-	public void createRequest(String riderID, String driverID, String addedTime, String type){
+	public void createPendingResponse(String requesterID, String requesteeID, String addedTime, String type){
 		try {		
 			//Store values into a new trip
-			stmt.executeUpdate("REPLACE INTO awaitingResponse (riderID, driverID, requestType, addedTime) VALUES "
-					+ "('" + riderID + "', '" + driverID + "', '" + type
+			stmt.executeUpdate("REPLACE INTO pendingResponse (requesterID, requesteeID, requestType, addedTime) VALUES "
+					+ "('" + requesterID + "', '" + requesteeID + "', '" + type
 					+ "', '" + Long.valueOf(addedTime) + "');");
 
 		} catch (SQLException e) {
@@ -399,4 +399,114 @@ public class DatabaseController {
 		}
 	}
 	
+	public void removeTrip(String riderID, String driverID){
+		try{
+			stmt.executeUpdate("DELETE FROM trip WHERE riderID ='"+ riderID +"' AND driverID='"+ driverID +"';");
+		} catch (SQLException e){
+			e.printStackTrace();
+		}
+	}
+	
+	public void deletePendingResponse(String requesterID, String requesteeID){
+		try{
+			stmt.executeUpdate("DELETE FROM pendingResponse WHERE requesteeID ='"+ requesteeID +"' AND requesterID='"+ requesterID +"';");
+		} catch (SQLException e){
+			e.printStackTrace();
+		}
+	}
+	
+	public void deleteRideRequest(String riderID){
+		try{
+			stmt.executeUpdate("DELETE FROM rideRequest WHERE riderID ='"+ riderID +"';");
+		} catch (SQLException e){
+			e.printStackTrace();
+		}
+	}
+	
+	public void deleteDriveRequest(String driverID){
+		try{
+			stmt.executeUpdate("DELETE FROM driveRequest WHERE driverID ='"+ driverID +"';");
+		} catch (SQLException e){
+			e.printStackTrace();
+		}
+	}
+	
+	//Returns trip user is currently active in, returns null if none exist
+	public String getTrip(String userID){
+		String returnString = "";
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM trip WHERE riderID='" + userID + "';");
+			if(!rs.isBeforeFirst())
+				rs = stmt.executeQuery("SELECT * FROM trip WHERE driverID='" + userID + "';");
+
+			if(rs.next()){
+				int totalRows = rs.getMetaData().getColumnCount();
+				for (int i = 0; i < totalRows; i++){
+					returnString += rs.getObject(i+1) + ";";
+				}
+				
+				return returnString;
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	//Returns any requests waiting for the users response, returns null if none exist
+	public String getPendingResponses(String userID){
+		String returnString = "";
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesterID='" + userID + "';");
+			if(!rs.isBeforeFirst())
+				rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + userID + "';");
+			
+			if(rs.next()){
+				int totalRows = rs.getMetaData().getColumnCount();
+				for (int i = 0; i < totalRows; i++){
+					returnString += rs.getObject(i+1) + ";";
+				}
+				
+				return returnString;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	//Returns any requests in the queue, returns empty string if none exist, null if error occurred
+	public String getQueueRequests(String userID){
+		String returnString = "";
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE driverID='" + userID + "';");
+			if(rs.next()){
+				int totalRows = rs.getMetaData().getColumnCount();
+				for (int i = 0; i < totalRows; i++){
+					returnString += rs.getObject(i+1) + ";";
+				}
+			}
+			rs = stmt.executeQuery("SELECT * FROM rideRequest WHERE riderID='" + userID + "';");
+			if(rs.next()){
+				returnString += "_";
+				int totalRows = rs.getMetaData().getColumnCount();
+				for (int i = 0; i < totalRows; i++){
+					returnString += rs.getObject(i+1) + ";";
+				}
+			}
+			
+			return returnString;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
 }

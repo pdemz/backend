@@ -78,68 +78,183 @@ public class YokweServlet extends HttpServlet {
 			riderSelection(request.getParameter("riderID"), userID, request.getParameter("addedTime"));
 		
 		//Once the selectee accepts the ride, create a trip and delete the request
-		else if(type.equals("accept"))
-			accept(userID);
+		else if(type.equals("accept")){
+			String requesterID = request.getParameter("requesterID");
+			String requestType = request.getParameter("requestType");
+			accept(requesterID, userID, requestType);
+		}
+		else if(type.equals("rideReject")){
+			String requesterID = request.getParameter("requesterID");
+			dbController.deletePendingResponse(requesterID, userID);
+			
+			//Notify requester that they were rejected
+			rideRejectionNotification(requesterID);
+		}else if(type.equals("driveReject")){
+			String requesterID = request.getParameter("requesterID");
+			dbController.deletePendingResponse(requesterID, userID);
+			
+			//Notify requester that they were rejected
+			driveRejectionNotification(requesterID);
+		}
 		
-		//If ride is declined or canceled, rider.driverID = NULL and driver.available = true
-		//Notify client. On notification received, display a view to alert what happened. If driverID == null and driver.available == true
-		//Always go back to homescreen
-		else if(type.equals("cancel"))
-			cancel(userID);
+		//If trip is cancelled, notify the other party and delete the trip
+		else if(type.equals("end")){
+			String riderID = request.getParameter("riderID");
+			String driverID = request.getParameter("driverID");
+			endTrip(riderID, driverID);
 		
-		//When app polls the server, check if they have any requests and update other info
+		}
+		//When app polls the server, it will check to see all pending info, send info accordingly:
+		//send If they have any trips currently, otherwise
+		//send Pending responses if they have any
+		//If not, send requests in the queue
+
+		//Need authentication with accessToken here.
 		else if(type.equals("update"))
-			update(request, response);
-		
+			getUpdate(userID);
 
 	}
 	
-	private void accept(String userID){
-		//dbController.makeUnavailable(userID);
-		
-		//Delete request
+	private void accept(String requesterID, String requesteeID, String type){
 		//Create trip
+		//Requests are deleted inside of create request function
+		dbController.createTrip(requesterID, requesteeID);
+		
+		//Send notification to requester
+		if(type.equals("drive"))
+			driveRequestAcceptance(requesterID);
+		else
+			rideRequestAcceptance(requesterID);
+		
 		
 	}
 	
-	private void cancel(String userID){
-		dbController.reset(userID);
+	private void endTrip(String riderID, String driverID){
+		dbController.removeTrip(riderID, driverID);
+		endTripNotification(riderID);
+		endTripNotification(driverID);
+		
 	}
 	
-	//Check if user has received a request
-	private void update(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		//will return type;userID;accessToken;origin;destination;driver.available;addedTime
-		System.out.println("UID: " + request.getParameter("userID"));
-		String dbString = dbController.getPartner(request.getParameter("userID"));
-		String[] split = dbString.split(";");
+	//Check user status in the system
+	private String getUpdate(String userID) {
+		String result;
 		
-		if(split[0].equals("rider")){
-			Rider rider = dbController.getRider(split[1]);
-			Driver driver = dbController.getDriver(request.getParameter("userID"));
-			String responseString = dbString+";"+getAddedTime(driver,rider);
-			response.getWriter().print(responseString);
-			System.out.println(responseString);
+		if((result = dbController.getTrip(userID)) != null)
+			return result;
 			
-		}else if(split[0].equals("driver")){
-			Driver driver = dbController.getDriver(split[1]);
-			Rider rider = dbController.getRider(request.getParameter("userID"));
-			String responseString = dbString+";"+getAddedTime(driver,rider);
-			response.getWriter().print(responseString);
-			System.out.println(responseString);
+		else if((result = dbController.getPendingResponses(userID)) != null)
+			return result;
+		
+		else
+			return dbController.getQueueRequests(userID);	
+	}
+	
+	private void endTripNotification(String userID){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(userID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
 			
-		}else
-			response.getWriter().print("nothing");	
+			String payload = APNS.newPayload().alertBody("Your trip has completed.").build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to rider.");
+		}
+		
+	}
+	
+	private void rideRejectionNotification(String userID){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(userID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("Your ride request was denied.").build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to rider.");
+		}
+		
+	}
+	
+	private void driveRejectionNotification(String userID){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(userID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("Your offer to drive was denied.").build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to driver.");
+		}
+		
+	}
+	
+	//Notify driver that a rider accepted their drive request
+	private void driveRequestAcceptance(String driverID){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(driverID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("A rider has accepted your offer to drive them.").build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to driver.");
+		}
+		
+	}
+	
+	//Notify rider that a driver accepted their ride request
+	private void rideRequestAcceptance(String riderID){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(riderID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody("A driver has accepted your request to ride with them.").build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to rider.");
+		}
 		
 	}
 	
 	//Notify driver that a rider has requested them
 	private void driverSelection(String driverID, String riderID, String addedTime){
 		
-		//Create trip using info from rider and driver
-		dbController.createRequest(riderID, driverID, addedTime, "drive");
+		//Create pendingResponse using info from rider and driver
+		dbController.createPendingResponse(riderID, driverID, addedTime, "ride");
 		
 		//Get driver apnsToken from database
-		String deviceToken = dbController.getDriverApnsToken(driverID);
+		String deviceToken = dbController.getUserApnsToken(driverID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
@@ -160,10 +275,10 @@ public class YokweServlet extends HttpServlet {
 	private void riderSelection(String riderID, String driverID, String addedTime){
 		
 		//Create trip using info from rider and driver
-		dbController.createRequest(riderID, driverID, addedTime, "ride");
+		dbController.createPendingResponse(driverID, riderID, addedTime, "drive");
 		
 		//Get driver apnsToken from database
-		String deviceToken = dbController.getDriverApnsToken(riderID);
+		String deviceToken = dbController.getUserApnsToken(riderID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =

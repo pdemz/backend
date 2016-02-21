@@ -13,6 +13,14 @@ public class Rider {
 	private String apnsToken;
 	private String driverID;
 	
+	//When a rider is recalled from database
+	public Rider(String newId, String newOrigin, String newDest){
+		
+		id = newId;
+		origin = newOrigin;
+		destination = newDest;
+	}
+	
 	public Rider(String newId, String newAccessToken, String newApnsToken, String newOrigin, String newDest, String newDriverID){
 	
 		accessToken = newAccessToken;

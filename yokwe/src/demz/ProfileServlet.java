@@ -50,7 +50,6 @@ public class ProfileServlet extends HttpServlet {
 			dbController.updatePhone(id, accessToken, phone);
 		}
 		
-		dbController.close();
 	}
 
 	/**

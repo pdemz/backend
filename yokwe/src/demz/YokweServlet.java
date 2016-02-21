@@ -391,8 +391,9 @@ public class YokweServlet extends HttpServlet {
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					String accessToken = dbController.getAccessToken(driver.getID());
 					
-					//userID;accessToken_
-					returnString += driver.getID() + ";" + accessToken + "_";
+					int addedTime = (int)((seconds - driver.getDuration())/60);
+					//userID;accessToken;addedTime_
+					returnString += driver.getID() + ";" + accessToken + ";" + addedTime +  "_";
 				}
 
 			} catch (Exception e) {
@@ -495,7 +496,7 @@ public class YokweServlet extends HttpServlet {
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
 
-				Rider newb = new Rider(id, null, null, origin, destination, null);
+				Rider newb = new Rider(id, origin, destination);
 				riderList.add(newb);
 			}
 			

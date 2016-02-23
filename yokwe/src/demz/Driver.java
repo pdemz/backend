@@ -9,7 +9,7 @@ public class Driver {
 	private String id;
 	private String accessToken;
 	private int limit = 0;
-	private long duration = 0; //duration in seconds -- will be used for ETA's
+	private long duration = 0; //duration in seconds
 	private String origin; //Origin and destination stored as coordinate string
 	private String destination;
 	private String apnsToken;

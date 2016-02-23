@@ -52,7 +52,6 @@ public class YokweServlet extends HttpServlet {
 		else if (type.equals("driveRequest"))
 			driveHandler(request, response, userID, accessToken);
 		
-		
 	}
 
 	/**
@@ -140,14 +139,24 @@ public class YokweServlet extends HttpServlet {
 	private String getUpdate(String userID) {
 		String result;
 		
-		if((result = dbController.getTrip(userID)) != null)
-			return result;
-			
-		else if((result = dbController.getPendingResponses(userID)) != null)
-			return result;
+		if((result = dbController.getTrip(userID)) != null){
+			String[] split = result.split(";");
+			String riderAccessToken = dbController.getAccessToken(split[0]);
+			String driverAccessToken = dbController.getAccessToken(split[1]);
+					
+			return result + ";" + riderAccessToken + ";" + driverAccessToken;
+		}
 		
-		else
-			return dbController.getQueueRequests(userID);	
+		else if((result = dbController.getPendingResponses(userID)) != null){
+			String[] split = result.split(";");
+			String requesterAccessToken = dbController.getAccessToken(split[0]);
+					
+			return result + ";" + requesterAccessToken;
+		}
+		
+		else{
+			return dbController.getQueueRequests(userID);
+		}
 	}
 	
 	private void endTripNotification(String userID){
@@ -495,8 +504,9 @@ public class YokweServlet extends HttpServlet {
 				String id = rs.getString("riderID");
 	            String origin = rs.getString("origin");
 	            String destination = rs.getString("destination");
+	            Long duration = rs.getLong("duration");
 
-				Rider newb = new Rider(id, origin, destination);
+				Rider newb = new Rider(id, origin, destination, duration);
 				riderList.add(newb);
 			}
 			

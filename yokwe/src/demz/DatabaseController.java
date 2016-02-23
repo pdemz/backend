@@ -460,9 +460,9 @@ public class DatabaseController {
 	public String getPendingResponses(String userID){
 		String returnString = "";
 		try {
-			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesterID='" + userID + "';");
-			if(!rs.isBeforeFirst())
-				rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + userID + "';");
+			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + userID + "';");
+			//if(!rs.isBeforeFirst())
+			//	rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + userID + "';");
 			
 			if(rs.next()){
 				int totalRows = rs.getMetaData().getColumnCount();

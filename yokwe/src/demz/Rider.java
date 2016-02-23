@@ -12,13 +12,14 @@ public class Rider {
 	private String destination;
 	private String apnsToken;
 	private String driverID;
+	private long duration = 0;
 	
 	//When a rider is recalled from database
-	public Rider(String newId, String newOrigin, String newDest){
-		
+	public Rider(String newId, String newOrigin, String newDest, long newDuration){
 		id = newId;
 		origin = newOrigin;
 		destination = newDest;
+		duration = newDuration;
 	}
 	
 	public Rider(String newId, String newAccessToken, String newApnsToken, String newOrigin, String newDest, String newDriverID){
@@ -41,6 +42,7 @@ public class Rider {
 			
 			origin = routes[0].legs[0].startLocation.toString();
 			destination = routes[0].legs[0].endLocation.toString();
+			duration = routes[0].legs[0].duration.inSeconds;
 			
 		} catch (Exception e) {
 			// TODO Auto-generated catch block

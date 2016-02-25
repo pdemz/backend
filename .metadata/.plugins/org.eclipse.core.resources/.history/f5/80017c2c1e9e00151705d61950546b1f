@@ -1,0 +1,84 @@
+package demz;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import com.mysql.jdbc.jdbc2.optional.*;
+
+public class DatabaseController {
+	
+	private MysqlDataSource dataSource;
+	private Connection conn;
+	java.sql.Statement stmt;
+	
+	public DatabaseController(){
+		try {	
+			dataSource = new MysqlDataSource();
+			dataSource.setUser("demz");
+			dataSource.setPassword("Iheartnewyork!1");
+			dataSource.setServerName("myfirstdatabase.cgrwwpjxf5ev.us-west-2.rds.amazonaws.com");
+			dataSource.setPort(3306);
+			Connection conn = dataSource.getConnection();
+			java.sql.Statement stmt = conn.createStatement();
+			stmt.executeQuery("USE demzdb");
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+	}
+	
+	public void storeRider(Rider rider){
+		
+		try {
+			stmt.executeUpdate("INSERT INTO rider VALUES "
+					+ "('" + rider.getID() + "', '" + rider.getAccessToken() + "', '" + rider.getOrigin() 
+					+ "', '" + rider.getDestination() + "', 1, NULL) ON DUPLICATE KEY UPDATE origin='" 
+					+ rider.getOrigin() + "', destination='" + rider.getDestination()+ "';");
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public void storeDriver(Driver driver){
+		
+		try {
+			stmt.executeUpdate("INSERT INTO driver VALUES ('" + driver.getLimit() + "', '" + driver.getOrigin() 
+			+ "', '" + driver.getDestination() + "', 1, '" + driver.getID() + "', '" + driver.getAccessToken() 
+			+ "') ON DUPLICATE KEY UPDATE origin='" + driver.getOrigin() + "', destination='" 
+			+ driver.getDestination()+ "';");
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+	
+	public ResultSet getAllDrivers() throws SQLException{
+		ResultSet rs = stmt.executeQuery("SELECT * FROM driver");
+		return rs;
+		
+	}
+	
+	public ResultSet getAllRiders() throws SQLException{
+		ResultSet rs = stmt.executeQuery("SELECT * FROM rider");
+		return rs;
+	
+	}
+	
+	public void close(){
+		try {
+			stmt.close();
+			conn.close();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+	}
+
+}

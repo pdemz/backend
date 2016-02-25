@@ -1,0 +1,22 @@
+package demz;
+
+import java.sql.Connection;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import com.mysql.jdbc.jdbc2.optional.*;
+
+public class DatabaseController {
+	
+	System.out.println("Got here first");
+	MysqlDataSource dataSource = new MysqlDataSource();
+	dataSource.setUser("demz");
+	dataSource.setPassword("Iheartnewyork!1");
+	dataSource.setServerName("myfirstdatabase.cgrwwpjxf5ev.us-west-2.rds.amazonaws.com");
+	dataSource.setPort(3306);
+	//dataSource.setDatabaseName("myfirstdatabase");
+
+	Connection conn = dataSource.getConnection();
+	java.sql.Statement stmt = conn.createStatement();
+	stmt.executeQuery("USE demzdb");
+
+}

@@ -17,6 +17,8 @@ import com.notnoop.apns.ApnsService;
 import com.google.maps.GeoApiContext;
 import com.google.maps.DirectionsApi;
 import com.google.maps.model.DirectionsRoute;
+import com.google.gson.*;
+
 import org.json.simple.*;
 
 /**
@@ -115,8 +117,7 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private void accept(String requesterID, String requesteeID, String type){
-		//Create trip
-		//Requests are deleted inside of create request function
+		//Create trip and delete pending reponse
 		dbController.createTrip(requesterID, requesteeID);
 		
 		//Send notification to requester
@@ -137,16 +138,17 @@ public class YokweServlet extends HttpServlet {
 	
 	//Check user status in the system
 	private String getUpdate(String userID) {
-		pendingResponse result;
-		/*
-		if((result = dbController.getTrip(userID)) != null){
-			String[] split = result.split(";");
-			String riderAccessToken = dbController.getAccessToken(split[0]);
-			String driverAccessToken = dbController.getAccessToken(split[1]);
-					
-			return result + ";" + riderAccessToken + ";" + driverAccessToken;
+		Trip trip;
+		
+		if((trip = dbController.getTrip(userID)) != null){
+			Gson gson = new Gson();
+			String json = gson.toJson(trip);
+			
+			return json;
 		}
-		*/
+		
+		pendingResponse result;
+		
 		//Check for offers to return to user
 		if((result = dbController.getPendingResponses(userID)) != null){
 
@@ -163,9 +165,26 @@ public class YokweServlet extends HttpServlet {
 				obj.put("duration", rr.duration);
 				
 				return obj.toJSONString();
+			}else{
+				//We need driver s/e as well as that of the rider. We also need total time of trip, which means getting
+				//the driveRequest time and the addedTime from the pendingResponse
+				
+				ArrayList<String> dr = dbController.getDriveRequest(userID);
+				RideRequest rr = dbController.getRideRequest(result.requesterID);
+				obj.put("type", "rideRequest");
+				obj.put("riderID", result.requesterID);
+				obj.put("riderOrigin", rr.origin);
+				obj.put("riderDestination", rr.destination);
+				obj.put("addedTime", result.addedTime);
+				obj.put("driverOrigin", dr.get(1));
+				obj.put("driverDestination", dr.get(2));
+				obj.put("driverDuration", dr.get(4));
+				obj.put("accessToken", dbController.getAccessToken(result.requesterID));
+				
+				return obj.toJSONString();
+				
 			}
 					
-			return null;
 		}
 		
 		else

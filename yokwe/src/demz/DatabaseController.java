@@ -3,6 +3,8 @@ package demz;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+
 import com.mysql.jdbc.jdbc2.optional.*;
 
 
@@ -19,7 +21,7 @@ public class DatabaseController {
 			dataSource.setPassword("Iheartnewyork!1");
 			dataSource.setServerName("myfirstdatabase.cgrwwpjxf5ev.us-west-2.rds.amazonaws.com");
 			dataSource.setPort(3306);
-			Connection conn = dataSource.getConnection();
+			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
 			stmt.executeQuery("USE demzdb");
 			
@@ -338,11 +340,11 @@ public class DatabaseController {
 			long addedTime = 0;
 			
 			//Get added time and determine which is driver and which is rider
-			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID=" + requesteeID
-					+ "AND requesterID='"+requesterID+"';");
+			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + requesteeID
+					+ "' AND requesterID='"+requesterID+"';");
 			if(rs.next()){
 				addedTime = rs.getLong("addedTime");
-				String type = rs.getString("type");
+				String type = rs.getString("requestType");
 				
 				if( type.equals("drive")){
 					driverID = requesterID;
@@ -353,10 +355,9 @@ public class DatabaseController {
 				}
 			}
 			
-			deletePendingResponse(requesterID, requesteeID);
 			
 			//Get origin and destination from driver
-			rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE id=" + driverID);
+			rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE driverID=" + driverID);
 			if(rs.next()){
 				dOrigin = rs.getString("origin");
 				dDestination = rs.getString("destination");
@@ -367,7 +368,7 @@ public class DatabaseController {
 			}
 			
 			//Get origin and destination from rider
-			rs = stmt.executeQuery("SELECT * FROM rideRequest WHERE id=" + riderID);
+			rs = stmt.executeQuery("SELECT * FROM rideRequest WHERE riderID=" + riderID);
 			if(rs.next()){
 				rOrigin = rs.getString("origin");
 				rDestination = rs.getString("destination");
@@ -378,9 +379,10 @@ public class DatabaseController {
 					+ "('" + riderID + "', '" + driverID + "', '" + dOrigin 
 					+ "', '" + dDestination + "', '" + rOrigin + "', '" + rDestination + "', '" + tripTime + "');");
 			
-			//Delete requests, now that a trip has been created. This is what it's all about, baby!
-			deleteRideRequest(riderID);
-			deleteDriveRequest(driverID);
+			//Delete pendingResponse, now that a trip has been created. This is what it's all about, baby!
+			deletePendingResponse(requesterID, requesteeID);
+			
+			//Eventually set ride and drive request to unavailable right here
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -433,20 +435,28 @@ public class DatabaseController {
 	}
 	
 	//Returns trip user is currently active in, returns null if none exist
-	public String getTrip(String userID){
-		String returnString = "";
+	public Trip getTrip(String userID){
+		Trip trip = new Trip();
 		try {
 			ResultSet rs = stmt.executeQuery("SELECT * FROM trip WHERE riderID='" + userID + "';");
-			if(!rs.isBeforeFirst())
+			if(!rs.isBeforeFirst()){
+				System.out.println("Got into the close statements");
+				stmt.close();
+				stmt = conn.createStatement();
 				rs = stmt.executeQuery("SELECT * FROM trip WHERE driverID='" + userID + "';");
+			}
 
 			if(rs.next()){
-				int totalRows = rs.getMetaData().getColumnCount();
-				for (int i = 0; i < totalRows; i++){
-					returnString += rs.getObject(i+1) + ";";
-				}
+				trip.duration = rs.getLong("duration");
+				String riderID = rs.getString("riderID");
+				String driverID = rs.getString("driverID");
+				RideRequest rr = getRideRequest(riderID);
+				DriveOffer dr = getDriveOffer(driverID);
 				
-				return returnString;
+				trip.rider = new Rider(riderID, rr.origin, rr.destination, rr.duration);
+				trip.driver = new Driver(driverID, 30, dr.origin, dr.destination, dr.duration);
+				
+				return trip;
 			}
 			
 		} catch (SQLException e) {
@@ -459,7 +469,6 @@ public class DatabaseController {
 	
 	//Returns any requests waiting for the users response, returns null if none exist
 	public pendingResponse getPendingResponses(String userID){
-		String returnString = "";
 		pendingResponse pResponse = new pendingResponse();
 		try {
 			ResultSet rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + userID + "';");
@@ -487,7 +496,9 @@ public class DatabaseController {
 	//Returns any requests in the queue, returns empty string if none exist, null if error occurred
 	public RideRequest getRideRequest(String userID){
 		RideRequest rideRequest = new RideRequest();
+
 		try {
+			stmt = conn.createStatement();
 			ResultSet rs = stmt.executeQuery("SELECT * FROM rideRequest WHERE riderID='" + userID + "';");
 			if(rs.next()){
 				rideRequest.origin = rs.getString("origin");
@@ -495,6 +506,49 @@ public class DatabaseController {
 				rideRequest.duration = rs.getLong("duration");
 				
 				return rideRequest;	
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	//Returns any requests in the queue, returns empty string if none exist, null if error occurred
+	public DriveOffer getDriveOffer(String userID){
+		DriveOffer dr = new DriveOffer();
+		try {
+			stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE driverID='" + userID + "';");
+			if(rs.next()){
+				dr.origin = rs.getString("origin");
+				dr.destination = rs.getString("destination");
+				dr.duration = rs.getLong("duration");
+				
+				return dr;	
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
+	public ArrayList<String> getDriveRequest(String userID){
+		ArrayList<String> dr = new ArrayList<String>();
+		try {
+			ResultSet rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE driverID='" + userID + "';");
+			if(rs.next()){
+				int count = rs.getMetaData().getColumnCount();
+				for(int i = 1; i <= count; i++){
+					dr.add(rs.getObject(i).toString());
+				}
+				
+				return dr;	
 			}
 			
 		} catch (SQLException e) {

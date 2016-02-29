@@ -62,7 +62,6 @@ public class YokweServlet extends HttpServlet {
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		FacebookHelper.test();
 		
 		String type = request.getParameter("type");
 		String userID = request.getParameter("userID");
@@ -141,6 +140,8 @@ public class YokweServlet extends HttpServlet {
 		Trip trip;
 		
 		if((trip = dbController.getTrip(userID)) != null){
+			trip.mutualFriends = FacebookHelper.test(trip.driver.accessToken, trip.rider.getID());
+
 			Gson gson = new Gson();
 			String json = gson.toJson(trip);
 			
@@ -157,6 +158,7 @@ public class YokweServlet extends HttpServlet {
 			if(result.type.equals("drive")){
 				RideRequest rr = dbController.getRideRequest(userID);
 				
+				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
 				obj.put("type", "driveOffer");
 				obj.put("driverID", result.requesterID);
 				obj.put("driverAccessToken", dbController.getAccessToken(result.requesterID));
@@ -171,6 +173,7 @@ public class YokweServlet extends HttpServlet {
 				
 				ArrayList<String> dr = dbController.getDriveRequest(userID);
 				RideRequest rr = dbController.getRideRequest(result.requesterID);
+				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
 				obj.put("type", "rideRequest");
 				obj.put("riderID", result.requesterID);
 				obj.put("riderOrigin", rr.origin);
@@ -439,7 +442,7 @@ public class YokweServlet extends HttpServlet {
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
 					//userID;accessToken;addedTime_
-					returnString += driver.getID() + ";" + accessToken + ";" + addedTime +  "_";
+					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + "_";
 				}
 
 			} catch (Exception e) {
@@ -483,7 +486,7 @@ public class YokweServlet extends HttpServlet {
 					
 					//id;accessToken;origin;destination;addedTime_
 					returnString += rider.getID() + ";" + accessToken + ";" 
-							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + "_";
+							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(driver.accessToken, rider.getID()) + "_";
 				}
 
 			} catch (Exception e) {

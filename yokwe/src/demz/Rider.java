@@ -7,12 +7,14 @@ import com.google.maps.model.*;
 //Smooth Cat Rider
 public class Rider {
 	private String id;
-	private String accessToken;
+	public String aboutMe;
+	public String phone;
+	public String accessToken;
 	private String origin;
 	private String destination;
 	private String apnsToken;
 	private String driverID;
-	private long duration = 0;
+	private long duration;
 	
 	//When a rider is recalled from database
 	public Rider(String newId, String newOrigin, String newDest, long newDuration){
@@ -20,6 +22,7 @@ public class Rider {
 		origin = newOrigin;
 		destination = newDest;
 		duration = newDuration;
+		
 	}
 	
 	public Rider(String newId, String newAccessToken, String newApnsToken, String newOrigin, String newDest, String newDriverID){

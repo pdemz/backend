@@ -8,6 +8,8 @@ public class Driver {
 	
 	public String id;
 	public String accessToken;
+	public String aboutMe;
+	public String phone;
 	private int limit = 0;
 	private long duration = 0; //duration in seconds
 	private String origin; //Origin and destination stored as coordinate string

@@ -74,10 +74,10 @@ public class DatabaseController {
 					+ "', '" + rider.getDestination() + "', 1, NULL, '" + rider.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" 
 					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', apnsToken='" + rider.getApnsToken() + "';");
 			storeUser(rider.getID(), rider.getAccessToken(), rider.getApnsToken());
-			stmt.executeUpdate("INSERT INTO rideRequest (riderId, origin, destination) VALUES "
+			stmt.executeUpdate("INSERT INTO rideRequest (riderID, origin, destination, duration) VALUES "
 					+ "('" + rider.getID() + "', '" + rider.getOrigin() 
-					+ "', '" + rider.getDestination() + "') ON DUPLICATE KEY UPDATE origin='" 
-					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "';");
+					+ "', '" + rider.getDestination() + "', duration='" + rider.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
+					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', duration='" + rider.getDuration() + "';");
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -274,6 +274,25 @@ public class DatabaseController {
 		return null;
 	}
 	
+	public String[] getProfileWithID(String userID){
+		try {
+			stmt = conn.createStatement();
+			ResultSet rs = stmt.executeQuery("SELECT * FROM user WHERE id='" + userID 
+					+ "';");
+			if(rs.next()){
+				String aboutMe = rs.getString("aboutMe");
+				String phone = rs.getString("phone");
+				
+				return new String[] {aboutMe, phone};
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		
+		return null;
+	}
+	
 	public void updateProfile(String aboutMe, String userID, String accessToken){
 		aboutMe = aboutMe.replaceAll("'", "''");
 		System.out.println(aboutMe);
@@ -395,7 +414,7 @@ public class DatabaseController {
 			//Store values into a new trip
 			stmt.executeUpdate("REPLACE INTO pendingResponse (requesterID, requesteeID, requestType, addedTime) VALUES "
 					+ "('" + requesterID + "', '" + requesteeID + "', '" + type
-					+ "', '" + Long.valueOf(addedTime) + "');");
+					+ "', '" + (long)Double.parseDouble(addedTime) + "');");
 
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -456,6 +475,17 @@ public class DatabaseController {
 				trip.rider = new Rider(riderID, rr.origin, rr.destination, rr.duration);
 				trip.driver = new Driver(driverID, 30, dr.origin, dr.destination, dr.duration);
 				
+				trip.rider.accessToken = getAccessToken(riderID);
+				trip.driver.accessToken = getAccessToken(driverID);
+				
+				String[] riderInfo = getProfileWithID(riderID);
+				String[] driverInfo = getProfileWithID(driverID);
+
+				trip.rider.aboutMe = riderInfo[0];
+				trip.rider.phone = riderInfo[1];
+				trip.driver.aboutMe = driverInfo[0];
+				trip.driver.phone = driverInfo[1];
+				
 				return trip;
 			}
 			
@@ -504,6 +534,9 @@ public class DatabaseController {
 				rideRequest.origin = rs.getString("origin");
 				rideRequest.destination = rs.getString("destination");
 				rideRequest.duration = rs.getLong("duration");
+				
+				System.out.println("This duration was retrieved: " + rs.getLong("duration"));
+
 				
 				return rideRequest;	
 			}

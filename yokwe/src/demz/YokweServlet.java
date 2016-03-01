@@ -487,6 +487,7 @@ public class YokweServlet extends HttpServlet {
 					//id;accessToken;origin;destination;addedTime_
 					returnString += rider.getID() + ";" + accessToken + ";" 
 							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(driver.accessToken, rider.getID()) + "_";
+
 				}
 
 			} catch (Exception e) {

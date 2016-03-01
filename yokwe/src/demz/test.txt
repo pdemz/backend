@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 1;5;John;Washington, DC;Philadelphia
 2;20;Jackson;Milford, DE;New York, NY
 3;10;Leonard;Atlanta;Wilmington, DE	
@@ -15,4 +16,23 @@
 15;10;Chris;San Francisco, CA; Venice, CA
 16;5;Ben;Venice, CA; Calabassas, CA
 17;14;Blake; Norfolk, VA; Philadelphia, PA
+=======
+1;5;John;Washington, DC;Philadelphia
+2;20;Jackson;Milford, DE;New York, NY
+3;10;Leonard;Atlanta;Wilmington, DE	
+4;5;Janet;Raleigh,NC;Atlantic City, NJ
+5;15;Fred;Greenville,NC;Newark, DE
+6;15;Billy;Charlotte,NC; New York, NY
+7;15;Bob;New York, NY; Boston, MA
+8;15;Thornton;Boston, MA; Greenville, NC
+9;20;Regis;Annapolis, MD; Charlottesville, VA
+10;10;Jack;Annapolis, MD; Chicago, IL
+11;10;Piper;Princeton, NJ; Arlington, VA
+12;10;Calvin;Washington, DC; Dover, DE
+13;10;Sal;San Diego; Venice, CA
+14;10;Sara;Santa Monica, CA; San Diego
+15;10;Chris;San Francisco, CA; Venice, CA
+16;5;Ben;Venice, CA; Calabassas, CA
+17;14;Blake; Norfolk, VA; Philadelphia, PA
+>>>>>>> branch 'master' of https://github.com/pdemz/backend.git
 18;12;Blaise; Norfolk, VA; Dover, DE

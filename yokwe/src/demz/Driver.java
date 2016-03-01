@@ -5,7 +5,6 @@ import com.google.maps.model.*;
 
 public class Driver {
 
-	
 	public String id;
 	public String accessToken;
 	public String aboutMe;

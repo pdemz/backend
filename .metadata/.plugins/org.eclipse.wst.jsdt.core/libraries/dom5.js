@@ -803,7 +803,11 @@ HTMLMediaElement.prototype.ended=new Boolean();
  * http://www.w3.org/TR/2012/WD-html5-20120329/media-elements.html
  * @type Boolean
  * @memberOf HTMLMediaElement
+<<<<<<< HEAD
  */
+=======
+ */
+>>>>>>> branch 'master' of https://github.com/pdemz/backend.git
 HTMLMediaElement.prototype.autoplay=new Boolean();
 
 /**

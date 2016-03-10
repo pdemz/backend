@@ -23,6 +23,13 @@ public class ProfileServlet extends HttpServlet {
 		String id = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
 		
+		if (type.equals("updatePaymentInfo")){
+			String stripeToken = request.getParameter("token");
+			String email = request.getParameter("email");
+			
+			dbController.updatePaymentInfo(id, stripeToken, email);
+		}
+		
 		//When a user logs in, update accessToken and apnsToken, or store them with id if no user exists
 		if (type.equals("storeUser")){
 			String apns = request.getParameter("apnsToken").replace("<", "").replace(" ", "").replace(">", "");
@@ -47,7 +54,7 @@ public class ProfileServlet extends HttpServlet {
 		//updates the user phone number
 		}else if (type.equals("updatePhone")){
 			String phone = request.getParameter("phone");
-			dbController.updatePhone(id, accessToken, phone);
+			dbController.updatePhone(id, phone);
 		}
 		
 	}

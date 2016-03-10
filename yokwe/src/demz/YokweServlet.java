@@ -2,24 +2,30 @@ package demz;
 
 import java.io.*;
 import java.util.ArrayList;
+import java.net.MalformedURLException;
+import java.net.URL;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
 import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.servlet.ServletContext;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
 import com.notnoop.apns.APNS;
 import com.notnoop.apns.ApnsService;
+
 import com.google.maps.GeoApiContext;
 import com.google.maps.DirectionsApi;
 import com.google.maps.model.DirectionsRoute;
 import com.google.gson.*;
 
 import org.json.simple.*;
+
+import org.apache.commons.dbutils.*;
 
 /**
  * Servlet implementation class YokweServlet
@@ -30,6 +36,7 @@ public class YokweServlet extends HttpServlet {
 	private ArrayList<Driver> drivers= new ArrayList<Driver>();
 	private ArrayList<Rider> riders = new ArrayList<Rider>();
 	private DatabaseController dbController = new DatabaseController();
+	URL resourceURL;
 	
 	private static final long serialVersionUID = 1L;
        
@@ -39,6 +46,7 @@ public class YokweServlet extends HttpServlet {
     public YokweServlet() {
         super();
         // TODO Auto-generated constructor stub
+        
     }
 
 	/**
@@ -46,14 +54,7 @@ public class YokweServlet extends HttpServlet {
 	 */
 	protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
 		// TODO Auto-generated method stub
-		String type = request.getParameter("type");
-		String userID = request.getParameter("userID");
-		String accessToken = request.getParameter("accessToken");
-			
-		if (type.equals("rideRequest"))
-			rideHandler(request, response, userID, accessToken);
-		else if (type.equals("driveRequest"))
-			driveHandler(request, response, userID, accessToken);
+		doPost(request, response);
 		
 	}
 
@@ -66,6 +67,9 @@ public class YokweServlet extends HttpServlet {
 		String type = request.getParameter("type");
 		String userID = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
+		
+		ServletContext context = request.getSession().getServletContext();
+		resourceURL = context.getResource("/WEB-INF/certificate.p12");
 			
 		if (type.equals("rideRequest"))
 			rideHandler(request, response, userID, accessToken);
@@ -113,6 +117,7 @@ public class YokweServlet extends HttpServlet {
 		//Need authentication with accessToken here.
 		else if(type.equals("update"))
 			response.getWriter().print(getUpdate(userID));
+		
 	}
 	
 	private void accept(String requesterID, String requesteeID, String type){
@@ -154,10 +159,10 @@ public class YokweServlet extends HttpServlet {
 		if((result = dbController.getPendingResponses(userID)) != null){
 
 			JSONObject obj = new JSONObject();
-			
+
 			if(result.type.equals("drive")){
 				RideRequest rr = dbController.getRideRequest(userID);
-				
+
 				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
 				obj.put("type", "driveOffer");
 				obj.put("driverID", result.requesterID);
@@ -165,12 +170,12 @@ public class YokweServlet extends HttpServlet {
 				obj.put("origin", rr.origin);
 				obj.put("destination", rr.destination);
 				obj.put("duration", rr.duration);
-				
+
 				return obj.toJSONString();
 			}else{
 				//We need driver s/e as well as that of the rider. We also need total time of trip, which means getting
 				//the driveRequest time and the addedTime from the pendingResponse
-				
+
 				ArrayList<String> dr = dbController.getDriveRequest(userID);
 				RideRequest rr = dbController.getRideRequest(result.requesterID);
 				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
@@ -183,11 +188,11 @@ public class YokweServlet extends HttpServlet {
 				obj.put("driverDestination", dr.get(2));
 				obj.put("driverDuration", dr.get(4));
 				obj.put("accessToken", dbController.getAccessToken(result.requesterID));
-				
+
 				return obj.toJSONString();
-				
+
 			}
-					
+
 		}
 		
 		else
@@ -206,8 +211,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your trip has completed.").build();
@@ -225,8 +230,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your ride request was denied.").build();
@@ -244,8 +249,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your offer to drive was denied.").build();
@@ -264,8 +269,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("A rider has accepted your offer to drive them.").build();
@@ -284,8 +289,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("A driver has accepted your request to ride with them.").build();
@@ -308,8 +313,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
@@ -332,8 +337,8 @@ public class YokweServlet extends HttpServlet {
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service =
 				    APNS.newService()
-				    .withCert("/home/ubuntu/jetty-distribution-9.3.5.v20151012/webapps/certificate.p12", "presten2")
-				    .withProductionDestination()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withSandboxDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("You have been offered a ride.").build();
@@ -502,64 +507,13 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private void loadDrivers(){
-		
-		ArrayList<Driver> driverList= new ArrayList<Driver>();
-		
-		try {
-			
-			ResultSet rs = dbController.getAllDrivers();
-
-			while (rs.next()) {
-				
-				String id = rs.getString("driverID");
-	            int limit = rs.getInt("timeLimit");
-	            String origin = rs.getString("origin");
-	            String destination = rs.getString("destination");
-	            long duration = rs.getLong("duration");
-
-				Driver newb = new Driver(id, limit, origin, destination, duration);
-				driverList.add(newb);
-			}
-			
-			rs.close();
-			drivers = driverList;
-			System.out.println("Drivers added successfully.");
-
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
+		drivers = dbController.getAllDrivers();
 
 	}
 	
 	private void loadRiders(){
+		riders = dbController.getAllRiders();
 		
-		ArrayList<Rider> riderList= new ArrayList<Rider>();
-		
-		try {
-			
-			ResultSet rs = dbController.getAllRiders();
-
-			while (rs.next()) {
-				
-				String id = rs.getString("riderID");
-	            String origin = rs.getString("origin");
-	            String destination = rs.getString("destination");
-	            Long duration = rs.getLong("duration");
-
-				Rider newb = new Rider(id, origin, destination, duration);
-				riderList.add(newb);
-			}
-			
-			rs.close();
-			riders = riderList;
-			System.out.println("Riders added successfully.");
-
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-
 	}
 
 }

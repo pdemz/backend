@@ -1,11 +1,13 @@
-demz/FacebookHelper.class
 demz/DriveOffer.class
 demz/Trip.class
+demz/Rider.class
+demz/ProfileServlet.class
+demz/FacebookHelper.class
+demz/User.class
 demz/PrivacyPolicy.class
 demz/DatabaseController.class
 demz/Driver.class
-demz/Rider.class
-demz/ProfileServlet.class
+demz/StripeHelper.class
 demz/pendingResponse.class
 demz/RideRequest.class
 demz/YokweServlet.class

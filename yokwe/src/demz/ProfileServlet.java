@@ -24,10 +24,16 @@ public class ProfileServlet extends HttpServlet {
 		String accessToken = request.getParameter("accessToken");
 		
 		if (type.equals("updatePaymentInfo")){
-			String stripeToken = request.getParameter("token");
+			String paymentToken = request.getParameter("token");
 			String email = request.getParameter("email");
 			
-			dbController.updatePaymentInfo(id, stripeToken, email);
+			//Retrieve user
+			User uu = dbController.getUser(id);
+			StripeHelper sh = new StripeHelper();
+			
+			//Create a customer token and store it in db with user
+			String customerToken = sh.createCustomer(email, paymentToken, uu.customerToken);
+			dbController.updatePaymentInfo(id, customerToken, uu.accountToken, email);
 		}
 		
 		//When a user logs in, update accessToken and apnsToken, or store them with id if no user exists
@@ -36,7 +42,7 @@ public class ProfileServlet extends HttpServlet {
 			dbController.storeUser(id, accessToken, apns);
 		}
 		
-		//updates about me section, for right now
+		//updates 'about me' section, for right now
 		else if (type.equals("updateProfile")){
 			String aboutMe = request.getParameter("aboutMe");
 			dbController.updateProfile(aboutMe, id, accessToken);
@@ -55,6 +61,45 @@ public class ProfileServlet extends HttpServlet {
 		}else if (type.equals("updatePhone")){
 			String phone = request.getParameter("phone");
 			dbController.updatePhone(id, phone);
+			
+		}else if (type.equals("createStripeAccount")){
+			String ip = request.getRemoteAddr();
+			String email = request.getParameter("email");
+			String firstName = request.getParameter("firstName");
+			String lastName = request.getParameter("lastName");
+			int day = Integer.parseInt(request.getParameter("day"));
+			int month = Integer.parseInt(request.getParameter("month"));
+			int year = Integer.parseInt(request.getParameter("year"));
+			String line1 = request.getParameter("line1");
+			String line2 = request.getParameter("line2");
+			String city = request.getParameter("city");
+			String state = request.getParameter("state");
+			String zip = request.getParameter("zip");
+			String last4 = request.getParameter("last4");
+			
+			StripeHelper sh = new StripeHelper();
+			sh.createManagedAccount(email, firstName, lastName, line1, line2, city, state, zip, day, month, year, last4, ip);
+			
+		}else if (type.equals("addBankAccount")){
+			StripeHelper sh = new StripeHelper();
+			String accountToken = dbController.getUser(id).accountToken;
+			String name = request.getParameter("name");
+			String routingNum = request.getParameter("routingNum");
+			String accountNum = request.getParameter("accountNum");
+			
+			sh.addBankAccount(accountToken, name, routingNum, accountNum);
+		
+		//Called by rider only
+		}else if (type.equals("makePayment")){
+			String driverID = request.getParameter("driverID");
+			int amount = Integer.parseInt(request.getParameter("amount"));
+			
+			//Get customer and connect tokens from db
+			User rider = dbController.getUser(id);
+			User driver = dbController.getUser(driverID);
+			
+			StripeHelper sh = new StripeHelper();
+			response.getWriter().println(sh.makePayment(driver.accountToken, rider.customerToken, amount));
 		}
 		
 	}

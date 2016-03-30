@@ -212,7 +212,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your trip has completed.").build();
@@ -231,7 +231,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your ride request was denied.").build();
@@ -250,7 +250,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("Your offer to drive was denied.").build();
@@ -270,7 +270,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("A rider has accepted your offer to drive them.").build();
@@ -290,7 +290,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("A driver has accepted your request to ride with them.").build();
@@ -314,7 +314,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
@@ -338,7 +338,7 @@ public class YokweServlet extends HttpServlet {
 			ApnsService service =
 				    APNS.newService()
 				    .withCert(resourceURL.getPath(), "presten2")
-				    .withSandboxDestination()
+				    .withProductionDestination()
 				    .build();
 			
 			String payload = APNS.newPayload().alertBody("You have been offered a ride.").build();

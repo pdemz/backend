@@ -84,14 +84,10 @@ public class DatabaseController {
 		try {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
-			stmt.executeUpdate("INSERT INTO rider (id, accessToken, origin, destination, available, driverID, apnsToken) VALUES "
-					+ "('" + rider.getID() + "', '" + rider.getAccessToken() + "', '" + rider.getOrigin() 
-					+ "', '" + rider.getDestination() + "', 1, NULL, '" + rider.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" 
-					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', apnsToken='" + rider.getApnsToken() + "';");
 			storeUser(rider.getID(), rider.getAccessToken(), rider.getApnsToken());
 			stmt.executeUpdate("INSERT INTO rideRequest (riderID, origin, destination, duration) VALUES "
 					+ "('" + rider.getID() + "', '" + rider.getOrigin() 
-					+ "', '" + rider.getDestination() + "', duration='" + rider.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
+					+ "', '" + rider.getDestination() + "', '" + rider.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
 					+ rider.getOrigin() + "', destination='" + rider.getDestination() + "', duration='" + rider.getDuration() + "';");
 			
 		} catch (SQLException e) {
@@ -112,10 +108,6 @@ public class DatabaseController {
 		try {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
-			stmt.executeUpdate("INSERT INTO driver (timeLimit, origin, destination, available, id, accessToken, apnsToken) VALUES (" 
-					+ driver.getLimit() + ", '" + driver.getOrigin() + "', '" + driver.getDestination() + "', 1, '" + driver.getID() 
-					+ "', '" + driver.getAccessToken() + "', '" + driver.getApnsToken() + "') ON DUPLICATE KEY UPDATE origin='" + driver.getOrigin() 
-					+ "', destination='" + driver.getDestination() + "', apnsToken='" + driver.getApnsToken() +"';");
 
 			storeUser(driver.getID(), driver.getAccessToken(), driver.getApnsToken());
 			stmt.executeUpdate("INSERT INTO driveRequest (timeLimit, driverId, origin, destination, duration) VALUES "
@@ -157,6 +149,41 @@ public class DatabaseController {
 		}
 		
 		return apnsToken;
+	}
+	
+	public User getUser(String userID){
+		ResultSet rs = null;
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery("SELECT * FROM user WHERE id=" + userID);
+			if(rs.next()){
+				User uu = new User();
+				uu.aboutMe = rs.getString("aboutMe");
+				uu.accessToken = rs.getString("accessToken");
+				uu.apnsToken = rs.getString("apnsToken");
+				uu.email = rs.getString("email");
+				uu.id = userID;
+				uu.phone = rs.getString("phone");
+				uu.customerToken = rs.getString("customerToken");
+				uu.accountToken = rs.getString("accountToken");
+
+				return uu;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+		
+		
+		return null;
 	}
 	
 	public String getPartner(String userID){
@@ -470,17 +497,17 @@ public class DatabaseController {
 		}
 	}
 	
-	public void updatePaymentInfo(String userID, String stripeToken, String email){
+	public void updatePaymentInfo(String userID, String customerToken, String accountToken, String email){
 		java.sql.PreparedStatement pstmt = null;
 		Connection conn = null;
 		try {
 			conn = dataSource.getConnection();
-			pstmt = 
-					conn.prepareStatement("UPDATE user SET stripeToken = ?, email = ? WHERE id = ?");
+			pstmt = conn.prepareStatement("UPDATE user SET customerToken = ?, accountToken = ?, email = ? WHERE id = ?");
 
-			pstmt.setString(1, stripeToken);
-			pstmt.setString(2, email);
-			pstmt.setString(3, userID);
+			pstmt.setString(1, customerToken);
+			pstmt.setString(2, accountToken);
+			pstmt.setString(3, email);
+			pstmt.setString(4, userID);
 			pstmt.executeUpdate();
 			
 		} catch (SQLException e) {
@@ -501,7 +528,7 @@ public class DatabaseController {
 					+ "user (id, accessToken, apnsToken) VALUES ('" 
 					+ id + "', '" + accessToken + "', '" + apnsToken + "')"
 					+ "ON DUPLICATE KEY UPDATE "
-					+ "id='" + id + "', accessToken='" + accessToken + "', apnsToken='" + apnsToken + "';");
+					+ "accessToken='" + accessToken + "', apnsToken='" + apnsToken + "';");
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

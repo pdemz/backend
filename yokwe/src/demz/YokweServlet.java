@@ -30,7 +30,7 @@ import org.apache.commons.dbutils.*;
 /**
  * Servlet implementation class YokweServlet
  */
-@WebServlet("/YokweServlet")
+@WebServlet("/atlas")
 public class YokweServlet extends HttpServlet {
 	
 	private ArrayList<Driver> drivers= new ArrayList<Driver>();
@@ -73,14 +73,18 @@ public class YokweServlet extends HttpServlet {
 			
 		if (type.equals("rideRequest"))
 			rideHandler(request, response, userID, accessToken);
+		
 		else if (type.equals("driveRequest"))
 			driveHandler(request, response, userID, accessToken);
 		
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
 		else if(type.equals("driverSelection"))
-			driverSelection(request.getParameter("driverID"), userID, request.getParameter("addedTime"));
+			driverSelection(request.getParameter("driverID"), userID,
+					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
+		
 		else if(type.contentEquals("riderSelection"))
-			riderSelection(request.getParameter("riderID"), userID, request.getParameter("addedTime"));
+			riderSelection(request.getParameter("riderID"), userID,
+					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
 		
 		//Once the selectee accepts the ride, create a trip and delete the request
 		else if(type.equals("accept")){
@@ -88,41 +92,42 @@ public class YokweServlet extends HttpServlet {
 			String requestType = request.getParameter("requestType");
 			accept(requesterID, userID, requestType);
 		}
+		
 		else if(type.equals("rideReject")){
 			String requesterID = request.getParameter("requesterID");
 			dbController.deletePendingResponse(requesterID, userID);
-			
-			//Notify requester that they were rejected
 			rideRejectionNotification(requesterID);
+			
 		}else if(type.equals("driveReject")){
 			String requesterID = request.getParameter("requesterID");
 			dbController.deletePendingResponse(requesterID, userID);
-			
-			//Notify requester that they were rejected
 			driveRejectionNotification(requesterID);
 		}
 		
-		//If trip is cancelled, notify the other party and delete the trip
+		//If trip is ended, notify the other party, make the transaction and delete the trip
 		else if(type.equals("end")){
 			String riderID = request.getParameter("riderID");
 			String driverID = request.getParameter("driverID");
+			response.getWriter().print(makePayment(riderID, driverID));
 			endTrip(riderID, driverID);
 		
 		}
+		
 		//When app polls the server, it will check to see all pending info, send info accordingly:
 		//send If they have any trips currently, otherwise
 		//send Pending responses if they have any
 		//If not, send requests in the queue
 
-		//Need authentication with accessToken here.
+		//Need authentication with accessToken here eventually.
 		else if(type.equals("update"))
 			response.getWriter().print(getUpdate(userID));
-		
+	
 	}
 	
 	private void accept(String requesterID, String requesteeID, String type){
 		//Create trip and delete pending reponse
 		dbController.createTrip(requesterID, requesteeID);
+		dbController.deletePendingResponse(requesterID, requesteeID);
 		
 		//Send notification to requester
 		if(type.equals("drive"))
@@ -202,6 +207,19 @@ public class YokweServlet extends HttpServlet {
 			return dbController.getQueueRequests(userID);
 		}
 		*/
+	}
+	
+	private String makePayment(String riderID, String driverID){
+		
+		//Get customer and connect tokens from db along with trip price
+		User rider = dbController.getUser(riderID);
+		User driver = dbController.getUser(driverID);
+		Trip tt = dbController.getTrip(riderID);
+		
+		//Make the payment
+		StripeHelper sh = new StripeHelper();
+		return sh.makePayment(driver.accountToken, rider.customerToken, tt.price);
+		
 	}
 	
 	private void endTripNotification(String userID){
@@ -302,10 +320,10 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	//Notify driver that a rider has requested them
-	private void driverSelection(String driverID, String riderID, String addedTime){
+	private void driverSelection(String driverID, String riderID, String addedTime, int price){
 		
 		//Create pendingResponse using info from rider and driver
-		dbController.createPendingResponse(riderID, driverID, addedTime, "ride");
+		dbController.createPendingResponse(riderID, driverID, addedTime, price, "ride");
 		
 		//Get driver apnsToken from database
 		String deviceToken = dbController.getUserApnsToken(driverID);
@@ -326,10 +344,10 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	//Notify rider that they have been requested by a driver
-	private void riderSelection(String riderID, String driverID, String addedTime){
+	private void riderSelection(String riderID, String driverID, String addedTime, int price){
 		
 		//Create trip using info from rider and driver
-		dbController.createPendingResponse(driverID, riderID, addedTime, "drive");
+		dbController.createPendingResponse(driverID, riderID, addedTime, price, "drive");
 		
 		//Get driver apnsToken from database
 		String deviceToken = dbController.getUserApnsToken(riderID);
@@ -354,6 +372,7 @@ public class YokweServlet extends HttpServlet {
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
 		String apns = request.getParameter("apnsToken");
+		response.getWriter().println(apns);
 		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
 		storeRider(rider); //Store the ride request in the database
@@ -427,6 +446,7 @@ public class YokweServlet extends HttpServlet {
 		
 		DirectionsRoute[] routes;
 		long seconds;
+		long distance;
 
 		// For every driver in the system, check if the rider is within their
 		// set limit
@@ -440,14 +460,24 @@ public class YokweServlet extends HttpServlet {
 				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
 						+ routes[0].legs[2].duration.inSeconds;
 				
+				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+						+ routes[0].legs[2].distance.inMeters;
+				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					String accessToken = dbController.getAccessToken(driver.getID());
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
-					//userID;accessToken;addedTime_
-					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + "_";
+					int riderTime = (int) (seconds/60 - addedTime);
+					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
+					int riderDistance = driver.getDistance() - addedDistance;
+					
+					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+					
+					//userID;accessToken;addedTime;mutualFriends;price_
+					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price + "_";
 				}
 
 			} catch (Exception e) {
@@ -470,6 +500,7 @@ public class YokweServlet extends HttpServlet {
 		
 		DirectionsRoute[] routes;
 		long seconds;
+		long distance;
 
 		// For every driver in the system, check if the rider is within their
 		// set limit
@@ -483,15 +514,25 @@ public class YokweServlet extends HttpServlet {
 				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
 						+ routes[0].legs[2].duration.inSeconds;
 				
+				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+						+ routes[0].legs[2].distance.inMeters;
+				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					int addedTime = (int)((seconds-driver.getDuration())/60);
+					int riderTime = (int) (seconds/60 - addedTime);
+					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
+					int riderDistance = driver.getDistance() - addedDistance;
+					
 					String accessToken = dbController.getAccessToken(rider.getID());
 					
-					//id;accessToken;origin;destination;addedTime_
+					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+					
+					//id;accessToken;origin;destination;addedTime;mutualFriends;price_
 					returnString += rider.getID() + ";" + accessToken + ";" 
-							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(driver.accessToken, rider.getID()) + "_";
+							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(driver.accessToken, rider.getID()) + ";" + price +"_";
 
 				}
 
@@ -503,6 +544,12 @@ public class YokweServlet extends HttpServlet {
 		}
 
 		return returnString;
+		
+	}
+	
+	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
+		//miles and minutes
+		return addedTime*20 + addedDistance*80 + riderTime*8 + riderDistance*30; 
 		
 	}
 	

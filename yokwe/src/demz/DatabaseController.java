@@ -110,11 +110,11 @@ public class DatabaseController {
 			stmt = conn.createStatement();
 
 			storeUser(driver.getID(), driver.getAccessToken(), driver.getApnsToken());
-			stmt.executeUpdate("INSERT INTO driveRequest (timeLimit, driverId, origin, destination, duration) VALUES "
+			stmt.executeUpdate("INSERT INTO driveRequest (timeLimit, driverId, origin, destination, duration, distance) VALUES "
 					+ "('" + driver.getLimit() + "', '" + driver.getID() + "', '" + driver.getOrigin() 
-					+ "', '" + driver.getDestination() + "', '" + driver.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
+					+ "', '" + driver.getDestination() + "', '" + driver.getDuration() + "', '" + driver.getDistance() + "') ON DUPLICATE KEY UPDATE origin='" 
 					+ driver.getOrigin() + "', destination='" + driver.getDestination() + "', timeLimit='" + driver.getLimit() 
-					+ "', duration='" + driver.getDuration() + "';");
+					+ "', duration='" + driver.getDuration() + "', distance='" + driver.getDistance() + "';");
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -169,6 +169,8 @@ public class DatabaseController {
 				uu.phone = rs.getString("phone");
 				uu.customerToken = rs.getString("customerToken");
 				uu.accountToken = rs.getString("accountToken");
+				
+				System.out.println("definitely returned a user here");
 
 				return uu;
 			}
@@ -353,8 +355,9 @@ public class DatabaseController {
 				String origin = rs.getString("origin");
 				String destination = rs.getString("destination");
 				long duration = rs.getLong("duration");
+				int distance = rs.getInt("distance");
 
-				Driver newb = new Driver(id, limit, origin, destination, duration);
+				Driver newb = new Driver(id, limit, origin, destination, duration, distance, null);
 				driverList.add(newb);
 			}
 			
@@ -391,7 +394,7 @@ public class DatabaseController {
 				String destination = rs.getString("destination");
 				Long duration = rs.getLong("duration");
 
-				Rider newb = new Rider(id, origin, destination, duration);
+				Rider newb = new Rider(id, origin, destination, duration, null);
 				riderList.add(newb);
 			}
 			
@@ -596,6 +599,7 @@ public class DatabaseController {
 			long duration = 0;
 			long tripTime = 0;
 			long addedTime = 0;
+			int price = 0;
 			
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
@@ -604,6 +608,7 @@ public class DatabaseController {
 					+ "' AND requesterID='"+requesterID+"';");
 			if(rs.next()){
 				addedTime = rs.getLong("addedTime");
+				price = rs.getInt("price");
 				String type = rs.getString("requestType");
 				
 				if( type.equals("drive")){
@@ -616,6 +621,9 @@ public class DatabaseController {
 			}
 			DbUtils.closeQuietly(rs);
 			DbUtils.closeQuietly(stmt);
+			
+			System.out.println(driverID);
+			System.out.print("driver");
 			
 			//Get origin and destination from driver
 			stmt = conn.createStatement();
@@ -643,10 +651,15 @@ public class DatabaseController {
 			DbUtils.closeQuietly(stmt);
 			
 			stmt = conn.createStatement();
+			
 			//Store values into a new trip
-			stmt.executeUpdate("INSERT INTO trip (riderID, driverID, dOrigin, dDestination, rOrigin, rDestination, duration) VALUES "
+			System.out.println(driverID);
+			System.out.print("driver");
+			
+			stmt.executeUpdate("INSERT INTO trip (riderID, driverID, dOrigin, dDestination, rOrigin, rDestination, duration, price) VALUES "
 					+ "('" + riderID + "', '" + driverID + "', '" + dOrigin 
-					+ "', '" + dDestination + "', '" + rOrigin + "', '" + rDestination + "', '" + tripTime + "');");
+					+ "', '" + dDestination + "', '" + rOrigin + "', '" 
+					+ rDestination + "', '" + tripTime + "', '" + price + "');");
 			
 			//Delete pendingResponse, now that a trip has been created. This is what it's all about, baby!
 			deletePendingResponse(requesterID, requesteeID);
@@ -664,17 +677,18 @@ public class DatabaseController {
 		
 	}
 	
-	public void createPendingResponse(String requesterID, String requesteeID, String addedTime, String type){
+	public void createPendingResponse(String requesterID, String requesteeID, String addedTime, int price, String type){
 		java.sql.Statement stmt = null;
 		Connection conn = null;
+		
 		try {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
 			
 			//Store values into a new trip
-			stmt.executeUpdate("REPLACE INTO pendingResponse (requesterID, requesteeID, requestType, addedTime) VALUES "
+			stmt.executeUpdate("REPLACE INTO pendingResponse (requesterID, requesteeID, requestType, addedTime, price) VALUES "
 					+ "('" + requesterID + "', '" + requesteeID + "', '" + type
-					+ "', '" + (long)Double.parseDouble(addedTime) + "');");
+					+ "', '" + (long)Double.parseDouble(addedTime) + "', '" + price + "');");
 
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -770,13 +784,14 @@ public class DatabaseController {
 
 			if(rs.next()){
 				trip.duration = rs.getLong("duration");
+				trip.price = rs.getInt("price");
 				String riderID = rs.getString("riderID");
 				String driverID = rs.getString("driverID");
 				RideRequest rr = getRideRequest(riderID);
 				DriveOffer dr = getDriveOffer(driverID);
 				
-				trip.rider = new Rider(riderID, rr.origin, rr.destination, rr.duration);
-				trip.driver = new Driver(driverID, 30, dr.origin, dr.destination, dr.duration);
+				trip.rider = new Rider(riderID, rr.origin, rr.destination, rr.duration, getUser(riderID).customerToken);
+				trip.driver = new Driver(driverID, 30, dr.origin, dr.destination, dr.duration, dr.distance, getUser(driverID).accountToken);
 				
 				trip.rider.accessToken = getAccessToken(riderID);
 				trip.driver.accessToken = getAccessToken(driverID);

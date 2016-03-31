@@ -15,7 +15,14 @@ import java.util.*;
 
 public class StripeHelper {
 	
-	public boolean makePayment(String connectID, String customerID, int amount){
+	public int getCost(int addedTime, int riderTime){
+		//times are in minutes
+		
+		return 100*addedTime + 20*riderTime;
+		
+	}
+	
+	public String makePayment(String connectID, String customerID, int amount){
 		Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
 		
 		try{
@@ -32,9 +39,7 @@ public class StripeHelper {
 			//chargeParams.put("description","");
 			Charge cc = Charge.create(chargeParams);
 			
-			System.out.println(cc.toString());
-			
-			return true;
+			return cc.toString();
 		
 		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
 				| APIException e) {
@@ -42,7 +47,7 @@ public class StripeHelper {
 			e.printStackTrace();
 		}
 		
-		return false;
+		return null;
 		
 	}
 	

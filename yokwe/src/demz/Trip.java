@@ -6,6 +6,7 @@ public class Trip {
 	public String mutualFriends;
 	public long duration; //Seconds
 	public long length; //Meters
+	public int price; //cents
 	private String type = "trip";
 	
 }

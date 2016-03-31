@@ -10,7 +10,7 @@ import javax.servlet.http.HttpServletResponse;
 /**
  * Servlet implementation class ProfileServlet
  */
-@WebServlet("/ProfileServlet")
+@WebServlet("/profile")
 public class ProfileServlet extends HttpServlet {
 	private static final long serialVersionUID = 1L;
 	private DatabaseController dbController = new DatabaseController();
@@ -34,6 +34,8 @@ public class ProfileServlet extends HttpServlet {
 			//Create a customer token and store it in db with user
 			String customerToken = sh.createCustomer(email, paymentToken, uu.customerToken);
 			dbController.updatePaymentInfo(id, customerToken, uu.accountToken, email);
+			
+			response.getWriter().println(customerToken);
 		}
 		
 		//When a user logs in, update accessToken and apnsToken, or store them with id if no user exists
@@ -88,18 +90,6 @@ public class ProfileServlet extends HttpServlet {
 			String accountNum = request.getParameter("accountNum");
 			
 			sh.addBankAccount(accountToken, name, routingNum, accountNum);
-		
-		//Called by rider only
-		}else if (type.equals("makePayment")){
-			String driverID = request.getParameter("driverID");
-			int amount = Integer.parseInt(request.getParameter("amount"));
-			
-			//Get customer and connect tokens from db
-			User rider = dbController.getUser(id);
-			User driver = dbController.getUser(driverID);
-			
-			StripeHelper sh = new StripeHelper();
-			response.getWriter().println(sh.makePayment(driver.accountToken, rider.customerToken, amount));
 		}
 		
 	}

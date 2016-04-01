@@ -7,6 +7,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import com.google.gson.Gson;
+
 /**
  * Servlet implementation class ProfileServlet
  */
@@ -36,12 +38,30 @@ public class ProfileServlet extends HttpServlet {
 			dbController.updatePaymentInfo(id, customerToken, uu.accountToken, email);
 			
 			response.getWriter().println(customerToken);
-		}
+			
+		}else if(type.equals("getUser")){
+			User uu = dbController.getUser(id);
+			Gson gson = new Gson();
+			String json = gson.toJson(uu);
+			
+			response.getWriter().print(json);
 		
 		//When a user logs in, update accessToken and apnsToken, or store them with id if no user exists
-		if (type.equals("storeUser")){
-			String apns = request.getParameter("apnsToken").replace("<", "").replace(" ", "").replace(">", "");
-			dbController.storeUser(id, accessToken, apns);
+		}else if (type.equals("storeUser")){
+			User uu = new User();
+			uu.id = id;
+			uu.accessToken = accessToken;
+			String apns = request.getParameter("apnsToken");
+			if (apns != null)
+				uu.apnsToken = apns.replace("<", "").replace(" ", "").replace(">", "");
+			uu.aboutMe = request.getParameter("aboutMe");
+			uu.email = request.getParameter("email");
+			uu.phone = request.getParameter("phone");
+			uu.customerToken = request.getParameter("apnsToken");
+			uu.accountToken = request.getParameter("accountToken");
+					
+			dbController.storeUser(uu);
+			
 		}
 		
 		//updates 'about me' section, for right now
@@ -80,7 +100,10 @@ public class ProfileServlet extends HttpServlet {
 			String last4 = request.getParameter("last4");
 			
 			StripeHelper sh = new StripeHelper();
-			sh.createManagedAccount(email, firstName, lastName, line1, line2, city, state, zip, day, month, year, last4, ip);
+			String accountToken = sh.createManagedAccount(email, firstName, lastName, line1, line2, city, 
+					state, zip, day, month, year, last4, ip);
+			
+			response.getWriter().print(accountToken);
 			
 		}else if (type.equals("addBankAccount")){
 			StripeHelper sh = new StripeHelper();

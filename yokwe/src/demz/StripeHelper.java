@@ -113,7 +113,6 @@ public class StripeHelper {
 			
 			Account ac = Account.create(accountParams);
 			
-			
 			return ac.getId();
 			
 		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException

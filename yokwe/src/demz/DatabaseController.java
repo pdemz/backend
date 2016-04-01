@@ -4,6 +4,7 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.util.ArrayList;
+import java.sql.PreparedStatement;
 
 import org.apache.commons.dbutils.DbUtils;
 
@@ -84,7 +85,6 @@ public class DatabaseController {
 		try {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
-			storeUser(rider.getID(), rider.getAccessToken(), rider.getApnsToken());
 			stmt.executeUpdate("INSERT INTO rideRequest (riderID, origin, destination, duration) VALUES "
 					+ "('" + rider.getID() + "', '" + rider.getOrigin() 
 					+ "', '" + rider.getDestination() + "', '" + rider.getDuration() + "') ON DUPLICATE KEY UPDATE origin='" 
@@ -109,7 +109,6 @@ public class DatabaseController {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
 
-			storeUser(driver.getID(), driver.getAccessToken(), driver.getApnsToken());
 			stmt.executeUpdate("INSERT INTO driveRequest (timeLimit, driverId, origin, destination, duration, distance) VALUES "
 					+ "('" + driver.getLimit() + "', '" + driver.getID() + "', '" + driver.getOrigin() 
 					+ "', '" + driver.getDestination() + "', '" + driver.getDuration() + "', '" + driver.getDistance() + "') ON DUPLICATE KEY UPDATE origin='" 
@@ -521,22 +520,49 @@ public class DatabaseController {
 		}
 	}
 	
-	public void storeUser(String id, String accessToken, String apnsToken){
-		java.sql.Statement stmt = null;
+	//Verbose, but probably the best way to handle this monster of a statement
+	public void storeUser(User uu){
+		PreparedStatement pstmt = null;
 		Connection conn = null;
 		try{
 			conn = dataSource.getConnection();
-			stmt = conn.createStatement();
-			stmt.executeUpdate("INSERT INTO "
-					+ "user (id, accessToken, apnsToken) VALUES ('" 
-					+ id + "', '" + accessToken + "', '" + apnsToken + "')"
+			String insertQuery = "INSERT INTO "
+					+ "user (id, accessToken, apnsToken, aboutMe, email, phone, customerToken, accountToken)"
+					+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
 					+ "ON DUPLICATE KEY UPDATE "
-					+ "accessToken='" + accessToken + "', apnsToken='" + apnsToken + "';");
+					+ "accessToken=IFNULL(?,accessToken),"
+					+ "apnsToken=IFNULL(?,apnsToken),"
+					+ "aboutMe=IFNULL(?,aboutMe),"
+					+ "email=IFNULL(?,email),"
+					+ "phone=IFNULL(?,phone),"
+					+ "customerToken=IFNULL(?, customerToken),"
+					+ "accountToken=IFNULL(?, accountToken)";
+			
+			//Now do the 15 sets
+			pstmt = conn.prepareStatement(insertQuery);
+			pstmt.setString(1, uu.id);
+			pstmt.setString(2, uu.accessToken);
+			pstmt.setString(3, uu.apnsToken);
+			pstmt.setString(4, uu.aboutMe);
+			pstmt.setString(5, uu.email);
+			pstmt.setString(6, uu.phone);
+			pstmt.setString(7, uu.customerToken);
+			pstmt.setString(8, uu.accountToken);
+			pstmt.setString(9, uu.accessToken);
+			pstmt.setString(10, uu.apnsToken);
+			pstmt.setString(11, uu.aboutMe);
+			pstmt.setString(12, uu.email);
+			pstmt.setString(13, uu.phone);
+			pstmt.setString(14, uu.customerToken);
+			pstmt.setString(15, uu.accountToken);
+			
+			pstmt.executeUpdate();
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}finally{
-			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(pstmt);
 			DbUtils.closeQuietly(conn);
 
 		}

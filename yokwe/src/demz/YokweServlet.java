@@ -82,7 +82,7 @@ public class YokweServlet extends HttpServlet {
 			driverSelection(request.getParameter("driverID"), userID,
 					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
 		
-		else if(type.contentEquals("riderSelection"))
+		else if(type.equals("riderSelection"))
 			riderSelection(request.getParameter("riderID"), userID,
 					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
 		
@@ -372,7 +372,10 @@ public class YokweServlet extends HttpServlet {
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
 		String apns = request.getParameter("apnsToken");
-		response.getWriter().println(apns);
+		
+		System.out.println("Here's your sign: " + accessToken);
+
+		
 		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
 		storeRider(rider); //Store the ride request in the database
@@ -532,7 +535,7 @@ public class YokweServlet extends HttpServlet {
 					
 					//id;accessToken;origin;destination;addedTime;mutualFriends;price_
 					returnString += rider.getID() + ";" + accessToken + ";" 
-							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(driver.accessToken, rider.getID()) + ";" + price +"_";
+							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price +"_";
 
 				}
 

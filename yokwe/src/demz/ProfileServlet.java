@@ -57,7 +57,7 @@ public class ProfileServlet extends HttpServlet {
 			uu.aboutMe = request.getParameter("aboutMe");
 			uu.email = request.getParameter("email");
 			uu.phone = request.getParameter("phone");
-			uu.customerToken = request.getParameter("apnsToken");
+			uu.customerToken = request.getParameter("customerToken");
 			uu.accountToken = request.getParameter("accountToken");
 					
 			dbController.storeUser(uu);
@@ -86,33 +86,42 @@ public class ProfileServlet extends HttpServlet {
 			
 		}else if (type.equals("createStripeAccount")){
 			String ip = request.getRemoteAddr();
-			String email = request.getParameter("email");
 			String firstName = request.getParameter("firstName");
 			String lastName = request.getParameter("lastName");
 			int day = Integer.parseInt(request.getParameter("day"));
 			int month = Integer.parseInt(request.getParameter("month"));
 			int year = Integer.parseInt(request.getParameter("year"));
-			String line1 = request.getParameter("line1");
+			String line1Param = request.getParameter("line1");
+			String line1 = line1Param.replace("+", " ");
 			String line2 = request.getParameter("line2");
 			String city = request.getParameter("city");
 			String state = request.getParameter("state");
 			String zip = request.getParameter("zip");
 			String last4 = request.getParameter("last4");
 			
+			//Generate account token
 			StripeHelper sh = new StripeHelper();
-			String accountToken = sh.createManagedAccount(email, firstName, lastName, line1, line2, city, 
+			String accountToken = sh.createManagedAccount(firstName, lastName, line1, line2, city, 
 					state, zip, day, month, year, last4, ip);
 			
-			response.getWriter().print(accountToken);
+			//Store account token with user
+			User uu = new User();
+			uu.accountToken = accountToken;
+			uu.id = id;
+			dbController.storeUser(uu);
+			
+			response.getWriter().println(accountToken);
+			
 			
 		}else if (type.equals("addBankAccount")){
 			StripeHelper sh = new StripeHelper();
 			String accountToken = dbController.getUser(id).accountToken;
+			String email = request.getParameter("email");
 			String name = request.getParameter("name");
 			String routingNum = request.getParameter("routingNum");
 			String accountNum = request.getParameter("accountNum");
 			
-			sh.addBankAccount(accountToken, name, routingNum, accountNum);
+			sh.addBankAccount(accountToken, email, name, routingNum, accountNum);
 		}
 		
 	}

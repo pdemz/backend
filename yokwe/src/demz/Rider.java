@@ -33,7 +33,9 @@ public class Rider {
 		id = newId;
 		origin = newOrigin;
 		destination = newDest;
-		apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
+		if (newApnsToken != null){
+			apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
+		}
 		driverID = newDriverID;
 
 		//Get origin and destination coordinates. There's probably a better way to do this.

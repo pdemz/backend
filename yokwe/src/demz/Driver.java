@@ -37,7 +37,10 @@ public class Driver {
 		id = newId;
 		limit = newLimit;
 		accessToken = newAccessToken;
-		apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
+		
+		if (newApnsToken != null){
+			apnsToken = newApnsToken.replace("<", "").replace(" ", "").replace(">", "");
+		}
 		
 		//Now get the time of the route, in seconds, with no detours
 		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");

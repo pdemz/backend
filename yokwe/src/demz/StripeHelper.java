@@ -83,7 +83,7 @@ public class StripeHelper {
 	}
 	
 	//Requires full name, address, birthday, last 4, tos acceptance date and ip
-	public String createManagedAccount(String email, String firstName, String lastName,
+	public String createManagedAccount(String firstName, String lastName,
 			String line1, String line2, String city, String state, 
 			String zip, int day, int month, int year, String last4, String ip){
 		
@@ -93,7 +93,6 @@ public class StripeHelper {
 			Map<String, Object> accountParams = new HashMap<String, Object>();
 			accountParams.put("managed", "true");
 			accountParams.put("country", "US");
-			accountParams.put("email", email);
 			accountParams.put("legal_entity[type]", "individual");
 			accountParams.put("legal_entity[first_name]", firstName);
 			accountParams.put("legal_entity[last_name]", lastName);
@@ -123,7 +122,7 @@ public class StripeHelper {
 		return null;
 	}
 	
-	public boolean addBankAccount(String accountToken, String name, String routingNum, String accountNum){
+	public boolean addBankAccount(String accountToken, String email, String name, String routingNum, String accountNum){
 		try {
 			
 			Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
@@ -145,6 +144,7 @@ public class StripeHelper {
 			//Add token to account
 			Map<String, Object> accountParams = new HashMap<String, Object>();
 			accountParams.put("external_account", tt.getBankAccount());
+			accountParams.put("email", email);
 			
 			Account aa = Account.retrieve(accountToken, null);
 			aa.getExternalAccounts().create(tokenParams).toString();	

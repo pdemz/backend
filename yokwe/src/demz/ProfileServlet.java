@@ -25,6 +25,25 @@ public class ProfileServlet extends HttpServlet {
 		String id = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
 		
+		if(!type.equals("storeUser")){
+			//Authentication
+			if(id != null && !FacebookHelper.authenticated(accessToken, id)){
+				return;
+
+			}else{
+				String email = request.getParameter("email");
+				String password = request.getParameter("password");
+
+				if(!dbController.authenticateWithEmailAndPassword(email, password)){
+					response.sendError(400, "Invalid credentials");
+					return;
+				}
+
+				User uu = dbController.getUserWithEmail(email);
+				id = uu.id;
+			}
+		}
+		
 		if (type.equals("updatePaymentInfo")){
 			String paymentToken = request.getParameter("token");
 			String email = request.getParameter("email");
@@ -46,7 +65,7 @@ public class ProfileServlet extends HttpServlet {
 			
 			response.getWriter().print(json);
 		
-		//When a user logs in, update accessToken and apnsToken, or store them with id if no user exists
+		//When a user logs in, update all their info or create a new user
 		}else if (type.equals("storeUser")){
 			User uu = new User();
 			uu.id = id;
@@ -59,6 +78,7 @@ public class ProfileServlet extends HttpServlet {
 			uu.phone = request.getParameter("phone");
 			uu.customerToken = request.getParameter("customerToken");
 			uu.accountToken = request.getParameter("accountToken");
+			uu.password = request.getParameter("password");
 					
 			dbController.storeUser(uu);
 			
@@ -117,11 +137,14 @@ public class ProfileServlet extends HttpServlet {
 			StripeHelper sh = new StripeHelper();
 			String accountToken = dbController.getUser(id).accountToken;
 			String email = request.getParameter("email");
-			String name = request.getParameter("name");
+			String nameParam = request.getParameter("name");
+			String name = nameParam.replace("+", " ");
 			String routingNum = request.getParameter("routingNum");
 			String accountNum = request.getParameter("accountNum");
 			
-			sh.addBankAccount(accountToken, email, name, routingNum, accountNum);
+			String returnString = sh.addBankAccount(accountToken, email, name, routingNum, accountNum);
+			
+			response.getWriter().print(returnString);
 		}
 		
 	}

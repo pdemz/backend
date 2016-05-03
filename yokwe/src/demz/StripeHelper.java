@@ -23,7 +23,7 @@ public class StripeHelper {
 	}
 	
 	public String makePayment(String connectID, String customerID, int amount){
-		Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+		Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
 		
 		try{
 		
@@ -55,7 +55,7 @@ public class StripeHelper {
 	public String createCustomer(String email, String paymentToken, String customerToken){
 		Customer cc = null;
 		try {
-			Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
 
 			Map<String, Object> customerParams = new HashMap<String, Object>();
 			customerParams.put("description", "Customer for Atlas");
@@ -88,7 +88,7 @@ public class StripeHelper {
 			String zip, int day, int month, int year, String last4, String ip){
 		
 		try {
-			Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
 			
 			Map<String, Object> accountParams = new HashMap<String, Object>();
 			accountParams.put("managed", "true");
@@ -122,10 +122,10 @@ public class StripeHelper {
 		return null;
 	}
 	
-	public boolean addBankAccount(String accountToken, String email, String name, String routingNum, String accountNum){
+	public String addBankAccount(String accountToken, String email, String name, String routingNum, String accountNum){
 		try {
 			
-			Stripe.apiKey = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
 			
 			//Get bank account token
 			Map<String, Object> bankAccountParams = new HashMap<String, Object>();
@@ -143,20 +143,21 @@ public class StripeHelper {
 			
 			//Add token to account
 			Map<String, Object> accountParams = new HashMap<String, Object>();
-			accountParams.put("external_account", tt.getBankAccount());
+			//accountParams.put("external_account", tt.getBankAccount());
 			accountParams.put("email", email);
 			
 			Account aa = Account.retrieve(accountToken, null);
-			aa.getExternalAccounts().create(tokenParams).toString();	
-			
-			return true;
+			aa.update(accountParams);
+			String returnString = aa.getExternalAccounts().create(tokenParams).toString();	
+						
+			return returnString;
 			
 		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
 				| APIException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
-		return false;
+		return null;
 	}
 	
 }

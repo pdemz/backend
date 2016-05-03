@@ -70,7 +70,33 @@ public class YokweServlet extends HttpServlet {
 		
 		ServletContext context = request.getSession().getServletContext();
 		resourceURL = context.getResource("/WEB-INF/certificate.p12");
+		
+		//Authentication
+		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
+			return;
+
+		}else{
+			String email = request.getParameter("email");
+			String password = request.getParameter("password");
+
+			if(!dbController.authenticateWithEmailAndPassword(email, password)){
+				response.sendError(400, "Invalid credentials");
+				if(type.equals("authenticateEmail")){
+					response.getWriter().print("fail");
+				}
+				return;
+			}
+
+			if(type.equals("authenticateEmail")){
+				response.getWriter().print("success");
+				return;
+			}
 			
+			User uu = dbController.getUserWithEmail(email);
+			userID = uu.id;
+			
+		}
+					
 		if (type.equals("rideRequest"))
 			rideHandler(request, response, userID, accessToken);
 		
@@ -127,13 +153,14 @@ public class YokweServlet extends HttpServlet {
 	private void accept(String requesterID, String requesteeID, String type){
 		//Create trip and delete pending reponse
 		dbController.createTrip(requesterID, requesteeID);
-		dbController.deletePendingResponse(requesterID, requesteeID);
-		
+				
 		//Send notification to requester
-		if(type.equals("drive"))
+		if(type.equals("drive")){
 			driveRequestAcceptance(requesterID);
-		else
+		}
+		else{
 			rideRequestAcceptance(requesterID);
+		}
 		
 		
 	}
@@ -469,7 +496,9 @@ public class YokweServlet extends HttpServlet {
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
-					String accessToken = dbController.getAccessToken(driver.getID());
+					User uu = dbController.getUser(driver.getID());
+					String accessToken = uu.accessToken;
+					String aboutMe = uu.aboutMe;
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
 					int riderTime = (int) (seconds/60 - addedTime);
@@ -479,8 +508,13 @@ public class YokweServlet extends HttpServlet {
 					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
 					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
 					
+					String mutualFriends = "0";
+					if (accessToken != null){
+						mutualFriends = FacebookHelper.test(accessToken, rider.getID());	
+					}
+					
 					//userID;accessToken;addedTime;mutualFriends;price_
-					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price + "_";
+					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price + ";" + aboutMe + "_";
 				}
 
 			} catch (Exception e) {
@@ -528,14 +562,19 @@ public class YokweServlet extends HttpServlet {
 					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
 					int riderDistance = driver.getDistance() - addedDistance;
 					
-					String accessToken = dbController.getAccessToken(rider.getID());
+					User uu  = dbController.getUser(rider.getID());
 					
 					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
 					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
 					
+					String mutualFriends = "0";
+					if (uu.accessToken != null){
+						mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+					}
+					
 					//id;accessToken;origin;destination;addedTime;mutualFriends;price_
-					returnString += rider.getID() + ";" + accessToken + ";" 
-							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price +"_";
+					returnString += rider.getID() + ";" + uu.accessToken + ";" 
+							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
 
 				}
 
@@ -545,14 +584,13 @@ public class YokweServlet extends HttpServlet {
 			}
 
 		}
-
 		return returnString;
 		
 	}
 	
 	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
 		//miles and minutes
-		return addedTime*20 + addedDistance*80 + riderTime*8 + riderDistance*30; 
+		return addedTime*20 + addedDistance*80 + riderTime*8 + riderDistance*20; 
 		
 	}
 	

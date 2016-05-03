@@ -3,8 +3,12 @@ package demz;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.sql.PreparedStatement;
+import java.util.Date;
 
 import org.apache.commons.dbutils.DbUtils;
 
@@ -19,9 +23,41 @@ public class DatabaseController {
 		dataSource = new MysqlDataSource();
 		dataSource.setUser("demz");
 		dataSource.setPassword("Iheartnewyork!1");
-		dataSource.setServerName("myfirstdatabase.cgrwwpjxf5ev.us-west-2.rds.amazonaws.com");
+		dataSource.setServerName("eastcoast.cekfwxanl7gp.us-east-1.rds.amazonaws.com");
 		dataSource.setDatabaseName("demzdb");
 		dataSource.setPort(3306);
+		
+	}
+	
+	public boolean authenticateWithEmailAndPassword(String email, String password){
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			pstmt = conn.prepareStatement("SELECT 1 FROM user WHERE email = ? AND password = ?");
+			pstmt.setString(1, email);
+			pstmt.setString(2, password);
+			rs = pstmt.executeQuery();
+			if(rs.next()){
+				return true;
+			}
+			else{
+				return false;
+				
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
+		
+		return false;
 		
 	}
 	
@@ -186,6 +222,42 @@ public class DatabaseController {
 		
 		return null;
 	}
+	
+	public User getUserWithEmail(String email){
+		ResultSet rs = null;
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery("SELECT * FROM user WHERE email='" + email + "';");
+			System.out.println("email! " + email);
+			if(rs.next()){
+				User uu = new User();
+				System.out.println("email! " + email);
+				uu.aboutMe = rs.getString("aboutMe");
+				uu.accessToken = rs.getString("accessToken");
+				uu.apnsToken = rs.getString("apnsToken");
+				uu.id = rs.getString("id");
+				uu.phone = rs.getString("phone");
+				uu.customerToken = rs.getString("customerToken");
+				uu.accountToken = rs.getString("accountToken");
+
+				return uu;
+			}
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}	
+		
+		return null;
+	}
+	
 	
 	public String getPartner(String userID){
 		//will return type;userID;accessToken;origin;destination;addedTime
@@ -527,8 +599,8 @@ public class DatabaseController {
 		try{
 			conn = dataSource.getConnection();
 			String insertQuery = "INSERT INTO "
-					+ "user (id, accessToken, apnsToken, aboutMe, email, phone, customerToken, accountToken)"
-					+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+					+ "user (id, accessToken, apnsToken, aboutMe, email, phone, customerToken, password, accountToken)"
+					+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
 					+ "ON DUPLICATE KEY UPDATE "
 					+ "accessToken=IFNULL(?,accessToken),"
 					+ "apnsToken=IFNULL(?,apnsToken),"
@@ -536,6 +608,7 @@ public class DatabaseController {
 					+ "email=IFNULL(?,email),"
 					+ "phone=IFNULL(?,phone),"
 					+ "customerToken=IFNULL(?, customerToken),"
+					+ "password=IFNULL(?, password),"
 					+ "accountToken=IFNULL(?, accountToken)";
 			
 			//Now do the 15 sets
@@ -547,16 +620,25 @@ public class DatabaseController {
 			pstmt.setString(5, uu.email);
 			pstmt.setString(6, uu.phone);
 			pstmt.setString(7, uu.customerToken);
-			pstmt.setString(8, uu.accountToken);
-			pstmt.setString(9, uu.accessToken);
-			pstmt.setString(10, uu.apnsToken);
-			pstmt.setString(11, uu.aboutMe);
-			pstmt.setString(12, uu.email);
-			pstmt.setString(13, uu.phone);
-			pstmt.setString(14, uu.customerToken);
-			pstmt.setString(15, uu.accountToken);
+			pstmt.setString(8, uu.password);
+			pstmt.setString(9, uu.accountToken);
+			pstmt.setString(10, uu.accessToken);
+			pstmt.setString(11, uu.apnsToken);
+			pstmt.setString(12, uu.aboutMe);
+			pstmt.setString(13, uu.email);
+			pstmt.setString(14, uu.phone);
+			pstmt.setString(15, uu.customerToken);
+			pstmt.setString(16, uu.password);
+			pstmt.setString(17, uu.accountToken);
 			
 			pstmt.executeUpdate();
+			
+			if(uu.id == null){
+				String updateString = "UPDATE user SET id=atlasID WHERE id is NULL;";
+				DbUtils.closeQuietly(pstmt);
+				pstmt = conn.prepareStatement(updateString);
+				pstmt.executeUpdate();
+			}
 			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
@@ -622,13 +704,16 @@ public class DatabaseController {
 			String rDestination = null;
 			String driverID = null;
 			String riderID = null;
+			long riderDuration = 0;
 			long duration = 0;
 			long tripTime = 0;
 			long addedTime = 0;
+			long distance = 0;
 			int price = 0;
 			
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
+			
 			//Get added time and determine which is driver and which is rider
 			rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesteeID='" + requesteeID
 					+ "' AND requesterID='"+requesterID+"';");
@@ -648,9 +733,6 @@ public class DatabaseController {
 			DbUtils.closeQuietly(rs);
 			DbUtils.closeQuietly(stmt);
 			
-			System.out.println(driverID);
-			System.out.print("driver");
-			
 			//Get origin and destination from driver
 			stmt = conn.createStatement();
 			rs = stmt.executeQuery("SELECT * FROM driveRequest WHERE driverID=" + driverID);
@@ -658,11 +740,11 @@ public class DatabaseController {
 				dOrigin = rs.getString("origin");
 				dDestination = rs.getString("destination");
 				duration = rs.getLong("duration");
+				distance = rs.getLong("distance");
 				
 				//Get total trip time by adding driver duration and addedTime
 				tripTime = duration/60 + addedTime;
 			}
-			
 			DbUtils.closeQuietly(rs);
 			DbUtils.closeQuietly(stmt);
 			
@@ -672,25 +754,44 @@ public class DatabaseController {
 			if(rs.next()){
 				rOrigin = rs.getString("origin");
 				rDestination = rs.getString("destination");
+				riderDuration = rs.getLong("duration");
 			}
 			DbUtils.closeQuietly(rs);
 			DbUtils.closeQuietly(stmt);
 			
-			stmt = conn.createStatement();
-			
 			//Store values into a new trip
-			System.out.println(driverID);
-			System.out.print("driver");
+			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO trip (riderID, driverID, "
+					+ "dOrigin, dDestination, rOrigin, rDestination, duration, price, riderDuration, addedTime, length) VALUES "
+					+ "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 			
-			stmt.executeUpdate("INSERT INTO trip (riderID, driverID, dOrigin, dDestination, rOrigin, rDestination, duration, price) VALUES "
-					+ "('" + riderID + "', '" + driverID + "', '" + dOrigin 
-					+ "', '" + dDestination + "', '" + rOrigin + "', '" 
-					+ rDestination + "', '" + tripTime + "', '" + price + "');");
+			pstmt.setString(1, riderID);
+			pstmt.setString(2, driverID);
+			pstmt.setString(3, dOrigin);
+			pstmt.setString(4, dDestination);
+			pstmt.setString(5, rOrigin);
+			pstmt.setString(6, rDestination);
+			pstmt.setLong(7, tripTime);
+			pstmt.setInt(8, price);
+			pstmt.setLong(9, riderDuration);
+			pstmt.setLong(10, addedTime);
+			pstmt.setLong(11, distance);
+			pstmt.executeUpdate();
 			
-			//Delete pendingResponse, now that a trip has been created. This is what it's all about, baby!
+			//Create an entry in the history table
+			pstmt = conn.prepareStatement("INSERT INTO history (riderID, driverID, start, end, startDate, price) VALUES (?, ?, ?, ?, ?, ?)");
+			Calendar cal = Calendar.getInstance(); //Current time
+			pstmt.setString(1, riderID);
+			pstmt.setString(2, driverID);
+			pstmt.setString(3, rOrigin);
+			pstmt.setString(4, rDestination);
+			pstmt.setDate(5, new java.sql.Date(cal.getTimeInMillis()));
+			pstmt.setInt(6, price);
+			pstmt.executeUpdate();
+			
+			//Delete all requests now that a trip has been created
 			deletePendingResponse(requesterID, requesteeID);
-			
-			//Eventually set ride and drive request to unavailable right here
+			deleteRideRequest(riderID); 
+			deleteDriveRequest(driverID);
 			
 		} catch (SQLException e) {
 			e.printStackTrace();
@@ -727,14 +828,24 @@ public class DatabaseController {
 	public void removeTrip(String riderID, String driverID){
 		java.sql.Statement stmt = null;
 		Connection conn = null;
+		PreparedStatement pstmt = null;
+		
 		try{
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
 			stmt.executeUpdate("DELETE FROM trip WHERE riderID ='"+ riderID +"' AND driverID='"+ driverID +"';");
+			
+			//Set end date in trip history
+			Calendar cal = Calendar.getInstance();
+			pstmt = conn.prepareStatement("UPDATE history SET endDate = ?");
+			pstmt.setDate(1, new java.sql.Date(cal.getTimeInMillis()));
+			pstmt.executeUpdate();
+			
 		} catch (SQLException e){
 			e.printStackTrace();
 		}finally{
 			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(pstmt);
 			DbUtils.closeQuietly(conn);
 
 		}
@@ -813,12 +924,10 @@ public class DatabaseController {
 				trip.price = rs.getInt("price");
 				String riderID = rs.getString("riderID");
 				String driverID = rs.getString("driverID");
-				RideRequest rr = getRideRequest(riderID);
-				DriveOffer dr = getDriveOffer(driverID);
 				
-				trip.rider = new Rider(riderID, rr.origin, rr.destination, rr.duration, getUser(riderID).customerToken);
-				trip.driver = new Driver(driverID, 30, dr.origin, dr.destination, dr.duration, dr.distance, getUser(driverID).accountToken);
-				
+				trip.rider = new Rider(riderID, rs.getString("rOrigin"), rs.getString("rDestination"), rs.getLong("riderDuration"), getUser(riderID).customerToken);
+				trip.driver = new Driver(driverID, 30, rs.getString("dOrigin"), rs.getString("dDestination"), rs.getLong("duration"), rs.getInt("length"), getUser(driverID).accountToken);
+							
 				trip.rider.accessToken = getAccessToken(riderID);
 				trip.driver.accessToken = getAccessToken(driverID);
 				

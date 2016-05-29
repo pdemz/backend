@@ -11,5 +11,6 @@ public class User {
 	String customerToken;
 	String accountToken;
 	String email;
+	String name;
 	
 }

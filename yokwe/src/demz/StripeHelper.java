@@ -15,15 +15,17 @@ import java.util.*;
 
 public class StripeHelper {
 	
+	private String STRIPE_KEY = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+	
 	public int getCost(int addedTime, int riderTime){
 		//times are in minutes
 		
 		return 100*addedTime + 20*riderTime;
-		
+		//return 100;
 	}
 	
 	public String makePayment(String connectID, String customerID, int amount){
-		Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
+		Stripe.apiKey = STRIPE_KEY;
 		
 		try{
 		
@@ -36,8 +38,11 @@ public class StripeHelper {
 			chargeParams.put("customer", customerID);
 			chargeParams.put("destination", connectID);
 			chargeParams.put("application_fee", fee);
+			
 			//chargeParams.put("description","");
 			Charge cc = Charge.create(chargeParams);
+			
+			System.out.println(cc.toString());
 			
 			return cc.toString();
 		
@@ -55,11 +60,12 @@ public class StripeHelper {
 	public String createCustomer(String email, String paymentToken, String customerToken){
 		Customer cc = null;
 		try {
-			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
+			Stripe.apiKey = STRIPE_KEY;
 
 			Map<String, Object> customerParams = new HashMap<String, Object>();
 			customerParams.put("description", "Customer for Atlas");
 			customerParams.put("source", paymentToken);
+			System.out.println("customer email: " + email);
 			customerParams.put("email", email);
 			
 			//Create a new customer token where one does not exist already
@@ -88,7 +94,7 @@ public class StripeHelper {
 			String zip, int day, int month, int year, String last4, String ip){
 		
 		try {
-			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
+			Stripe.apiKey = STRIPE_KEY;
 			
 			Map<String, Object> accountParams = new HashMap<String, Object>();
 			accountParams.put("managed", "true");
@@ -125,7 +131,7 @@ public class StripeHelper {
 	public String addBankAccount(String accountToken, String email, String name, String routingNum, String accountNum){
 		try {
 			
-			Stripe.apiKey = "sk_live_F1gOogzs0M1aFqkAzVralu0d ";
+			Stripe.apiKey = STRIPE_KEY;
 			
 			//Get bank account token
 			Map<String, Object> bankAccountParams = new HashMap<String, Object>();

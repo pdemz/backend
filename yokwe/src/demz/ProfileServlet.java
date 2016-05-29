@@ -30,7 +30,7 @@ public class ProfileServlet extends HttpServlet {
 			if(id != null && !FacebookHelper.authenticated(accessToken, id)){
 				return;
 
-			}else{
+			}else if (id == null){
 				String email = request.getParameter("email");
 				String password = request.getParameter("password");
 
@@ -79,6 +79,7 @@ public class ProfileServlet extends HttpServlet {
 			uu.customerToken = request.getParameter("customerToken");
 			uu.accountToken = request.getParameter("accountToken");
 			uu.password = request.getParameter("password");
+			uu.name = request.getParameter("name");
 					
 			dbController.storeUser(uu);
 			

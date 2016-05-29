@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.Calendar;
 import java.sql.PreparedStatement;
 import java.util.Date;
+import org.mindrot.jbcrypt.*;
 
 import org.apache.commons.dbutils.DbUtils;
 
@@ -29,6 +30,84 @@ public class DatabaseController {
 		
 	}
 	
+	public void createReview(Review rr){
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+
+		try {
+			conn = dataSource.getConnection();
+			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO review (userID, stars, type, reviewerID, review) VALUES (?, ?, ?, ?, ?)");
+			pstmt.setString(1, rr.userID);
+			pstmt.setInt(2, rr.stars);
+			pstmt.setString(3, rr.type);
+			pstmt.setString(4, rr.reviewerID);
+			pstmt.setString(5, rr.review);
+			pstmt.executeUpdate();
+
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+
+	}
+	
+	public String[] getIncompleteReview(String userID){
+		String[] reviewInfo = new String[2];
+		
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			
+			pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND riderID = ?");
+			pstmt.setBoolean(1, false);
+			pstmt.setString(2, userID);
+			rs = pstmt.executeQuery();
+						
+			if(rs.next()){
+				//reviewee id
+				reviewInfo[0] = rs.getString("driverID");		
+				//type
+				reviewInfo[1] = "driver";
+				
+				return reviewInfo;
+			}else{
+				
+				pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND driverID = ?");
+				pstmt.setBoolean(1, false);
+				pstmt.setString(2, userID);
+				rs = pstmt.executeQuery();
+				
+				if(rs.next()){
+					//reviewee id
+					reviewInfo[0] = rs.getString("riderID");		
+					//type
+					reviewInfo[1] = "rider";
+					
+					return reviewInfo;
+				}
+				
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
+		
+		return null;
+		
+	}
+
 	public boolean authenticateWithEmailAndPassword(String email, String password){
 		ResultSet rs = null;
 		PreparedStatement pstmt = null;
@@ -36,16 +115,19 @@ public class DatabaseController {
 		
 		try {
 			conn = dataSource.getConnection();
-			pstmt = conn.prepareStatement("SELECT 1 FROM user WHERE email = ? AND password = ?");
+			
+			pstmt = conn.prepareStatement("SELECT * FROM user WHERE email = ?");
 			pstmt.setString(1, email);
-			pstmt.setString(2, password);
 			rs = pstmt.executeQuery();
+			
+			System.out.println("Got into the right function at least");
+			
 			if(rs.next()){
-				return true;
-			}
-			else{
-				return false;
+				String hashed = rs.getString("password");
 				
+				if(BCrypt.checkpw(password, hashed)){
+					return true;
+				}	
 			}
 			
 		} catch (SQLException e) {
@@ -599,8 +681,8 @@ public class DatabaseController {
 		try{
 			conn = dataSource.getConnection();
 			String insertQuery = "INSERT INTO "
-					+ "user (id, accessToken, apnsToken, aboutMe, email, phone, customerToken, password, accountToken)"
-					+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+					+ "user (id, accessToken, apnsToken, aboutMe, email, phone, customerToken, password, accountToken, name)"
+					+ " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
 					+ "ON DUPLICATE KEY UPDATE "
 					+ "accessToken=IFNULL(?,accessToken),"
 					+ "apnsToken=IFNULL(?,apnsToken),"
@@ -609,7 +691,14 @@ public class DatabaseController {
 					+ "phone=IFNULL(?,phone),"
 					+ "customerToken=IFNULL(?, customerToken),"
 					+ "password=IFNULL(?, password),"
-					+ "accountToken=IFNULL(?, accountToken)";
+					+ "accountToken=IFNULL(?, accountToken),"
+					+ "name=IFNULL(?, name)";			
+			String password = null;
+			
+			//Generate salt and store password
+			if (uu.password != null){
+				password = BCrypt.hashpw(uu.password, BCrypt.gensalt());
+			}
 			
 			//Now do the 15 sets
 			pstmt = conn.prepareStatement(insertQuery);
@@ -620,16 +709,18 @@ public class DatabaseController {
 			pstmt.setString(5, uu.email);
 			pstmt.setString(6, uu.phone);
 			pstmt.setString(7, uu.customerToken);
-			pstmt.setString(8, uu.password);
+			pstmt.setString(8, password);
 			pstmt.setString(9, uu.accountToken);
-			pstmt.setString(10, uu.accessToken);
-			pstmt.setString(11, uu.apnsToken);
-			pstmt.setString(12, uu.aboutMe);
-			pstmt.setString(13, uu.email);
-			pstmt.setString(14, uu.phone);
-			pstmt.setString(15, uu.customerToken);
-			pstmt.setString(16, uu.password);
-			pstmt.setString(17, uu.accountToken);
+			pstmt.setString(10, uu.name);
+			pstmt.setString(11, uu.accessToken);
+			pstmt.setString(12, uu.apnsToken);
+			pstmt.setString(13, uu.aboutMe);
+			pstmt.setString(14, uu.email);
+			pstmt.setString(15, uu.phone);
+			pstmt.setString(16, uu.customerToken);
+			pstmt.setString(17, password);
+			pstmt.setString(18, uu.accountToken);
+			pstmt.setString(19, uu.name);
 			
 			pstmt.executeUpdate();
 			

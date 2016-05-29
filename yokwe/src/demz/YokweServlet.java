@@ -75,7 +75,7 @@ public class YokweServlet extends HttpServlet {
 		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
 			return;
 
-		}else{
+		}else if(userID == null){
 			String email = request.getParameter("email");
 			String password = request.getParameter("password");
 
@@ -129,13 +129,19 @@ public class YokweServlet extends HttpServlet {
 			dbController.deletePendingResponse(requesterID, userID);
 			driveRejectionNotification(requesterID);
 		}
-		
 		//If trip is ended, notify the other party, make the transaction and delete the trip
 		else if(type.equals("end")){
 			String riderID = request.getParameter("riderID");
 			String driverID = request.getParameter("driverID");
 			response.getWriter().print(makePayment(riderID, driverID));
 			endTrip(riderID, driverID);
+				
+		}
+		//If trip is canceled, notify the other party and delete the trip. No transaction is made
+		else if(type.equals("cancel")){
+			String riderID = request.getParameter("riderID");
+			String driverID = request.getParameter("driverID");
+			cancelTrip(riderID, driverID, userID);
 		
 		}
 		
@@ -145,8 +151,20 @@ public class YokweServlet extends HttpServlet {
 		//If not, send requests in the queue
 
 		//Need authentication with accessToken here eventually.
-		else if(type.equals("update"))
+		else if(type.equals("update")){
 			response.getWriter().print(getUpdate(userID));
+		}
+		else if(type.equals("review")){
+			Review rr = new Review();
+			rr.reviewerID = userID;
+			rr.userID = request.getParameter("revieweeID");
+			rr.stars = Integer.parseInt(request.getParameter("stars"));
+			rr.review = request.getParameter("review");
+			rr.type = request.getParameter("reviewType");
+			
+			dbController.createReview(rr);
+			
+		}
 	
 	}
 	
@@ -172,13 +190,42 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
+	private void cancelTrip(String riderID, String driverID, String senderID){
+		dbController.removeTrip(riderID, driverID);
+		if(riderID.equals(senderID)){
+			sendNotification(driverID, "The rider cancelled your trip.");
+			sendNotification(riderID, "Your trip has been cancelled successfully.");
+			
+		}
+		else{
+			sendNotification(riderID, "The driver cancelled your trip.");
+			sendNotification(driverID, "Your trip has been cancelled successfully.");
+
+		}
+		
+	}
+	
 	//Check user status in the system
 	private String getUpdate(String userID) {
+		String[] reviewInfo;
+		if((reviewInfo = dbController.getIncompleteReview(userID)) != null){
+			//Returns a string array of size 2, the reviewee id and what the reviewee was acting as (rider or driver)
+			JSONObject obj = new JSONObject();
+			obj.put("revieweeID", reviewInfo[0]);
+			obj.put("review_type", reviewInfo[1]);
+			obj.put("type", "review");
+			
+			return obj.toJSONString();
+			
+		}
+		
 		Trip trip;
 		
 		if((trip = dbController.getTrip(userID)) != null){
-			trip.mutualFriends = FacebookHelper.test(trip.driver.accessToken, trip.rider.getID());
-
+			trip.mutualFriends = "0";
+			if(trip.driver.accessToken != null){
+				trip.mutualFriends = FacebookHelper.test(trip.driver.accessToken, trip.rider.getID());
+			}
 			Gson gson = new Gson();
 			String json = gson.toJson(trip);
 			
@@ -194,8 +241,12 @@ public class YokweServlet extends HttpServlet {
 
 			if(result.type.equals("drive")){
 				RideRequest rr = dbController.getRideRequest(userID);
-
-				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
+				String accessToken = dbController.getAccessToken(result.requesterID);
+				if(accessToken != null){
+					obj.put("mutualFriends", FacebookHelper.test(accessToken, result.requesteeID));
+				}else{
+					obj.put("mutualFriends",  "0");
+				}
 				obj.put("type", "driveOffer");
 				obj.put("driverID", result.requesterID);
 				obj.put("driverAccessToken", dbController.getAccessToken(result.requesterID));
@@ -210,7 +261,12 @@ public class YokweServlet extends HttpServlet {
 
 				ArrayList<String> dr = dbController.getDriveRequest(userID);
 				RideRequest rr = dbController.getRideRequest(result.requesterID);
-				obj.put("mutualFriends", FacebookHelper.test(dbController.getAccessToken(result.requesterID), result.requesteeID));
+				String accessToken = dbController.getAccessToken(result.requesterID);
+				if(accessToken != null){
+					obj.put("mutualFriends", FacebookHelper.test(accessToken, result.requesteeID));
+				}else{
+					obj.put("mutualFriends",  "0");
+				}
 				obj.put("type", "rideRequest");
 				obj.put("riderID", result.requesterID);
 				obj.put("riderOrigin", rr.origin);
@@ -219,7 +275,7 @@ public class YokweServlet extends HttpServlet {
 				obj.put("driverOrigin", dr.get(1));
 				obj.put("driverDestination", dr.get(2));
 				obj.put("driverDuration", dr.get(4));
-				obj.put("accessToken", dbController.getAccessToken(result.requesterID));
+				obj.put("accessToken", accessToken);
 
 				return obj.toJSONString();
 
@@ -497,8 +553,6 @@ public class YokweServlet extends HttpServlet {
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					User uu = dbController.getUser(driver.getID());
-					String accessToken = uu.accessToken;
-					String aboutMe = uu.aboutMe;
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
 					int riderTime = (int) (seconds/60 - addedTime);
@@ -509,12 +563,12 @@ public class YokweServlet extends HttpServlet {
 					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
 					
 					String mutualFriends = "0";
-					if (accessToken != null){
-						mutualFriends = FacebookHelper.test(accessToken, rider.getID());	
+					if (uu.accessToken != null){
+						mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
 					}
 					
 					//userID;accessToken;addedTime;mutualFriends;price_
-					returnString += driver.getID() + ";" + accessToken + ";" + addedTime + ";" + FacebookHelper.test(accessToken, rider.getID()) + ";" + price + ";" + aboutMe + "_";
+					returnString += driver.getID() + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
 				}
 
 			} catch (Exception e) {
@@ -591,7 +645,6 @@ public class YokweServlet extends HttpServlet {
 	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
 		//miles and minutes
 		return addedTime*20 + addedDistance*80 + riderTime*8 + riderDistance*20; 
-		
 	}
 	
 	private void loadDrivers(){
@@ -601,6 +654,26 @@ public class YokweServlet extends HttpServlet {
 	
 	private void loadRiders(){
 		riders = dbController.getAllRiders();
+		
+	}
+	
+	//Send notification to user
+	private void sendNotification(String userID, String message){
+		//Get driver apnsToken from database
+		String deviceToken = dbController.getUserApnsToken(userID);
+		
+		if (deviceToken != null && deviceToken.length() > 1){
+			ApnsService service =
+				    APNS.newService()
+				    .withCert(resourceURL.getPath(), "presten2")
+				    .withProductionDestination()
+				    .build();
+			
+			String payload = APNS.newPayload().alertBody(message).build();
+			service.push(deviceToken, payload);
+
+			System.out.println("A notification should have been sent to rider.");
+		}
 		
 	}
 

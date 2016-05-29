@@ -31,24 +31,35 @@ public class DatabaseController {
 	}
 	
 	public void createReview(Review rr){
-		java.sql.Statement stmt = null;
 		Connection conn = null;
-
+		PreparedStatement pstmt = null;
 		try {
 			conn = dataSource.getConnection();
-			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO review (userID, stars, type, reviewerID, review) VALUES (?, ?, ?, ?, ?)");
+			pstmt = conn.prepareStatement("INSERT INTO review (userID, stars, type, reviewerID, review) VALUES (?, ?, ?, ?, ?)");
 			pstmt.setString(1, rr.userID);
 			pstmt.setInt(2, rr.stars);
 			pstmt.setString(3, rr.type);
 			pstmt.setString(4, rr.reviewerID);
 			pstmt.setString(5, rr.review);
 			pstmt.executeUpdate();
-
+			DbUtils.closeQuietly(pstmt);
+			
+			if(rr.type.equals("driver")){
+				System.out.println("Should be updating history table");
+				pstmt = conn.prepareStatement("UPDATE history SET reviewed = true WHERE driverID = ? AND riderID = ? AND endDate IS NOT NULL");
+			}else{
+				pstmt = conn.prepareStatement("UPDATE history SET reviewed = true WHERE riderID = ? AND driverID = ? AND endDate IS NOT NULL");
+			}
+			
+			pstmt.setString(1, rr.userID);
+			pstmt.setString(2, rr.reviewerID);
+			pstmt.executeUpdate();
+			
 		} catch (SQLException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}finally{
-			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(pstmt);
 			DbUtils.closeQuietly(conn);
 
 		}
@@ -65,11 +76,11 @@ public class DatabaseController {
 		try {
 			conn = dataSource.getConnection();
 			
-			pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND riderID = ?");
+			pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND riderID = ? AND endDate IS NOT NULL");
 			pstmt.setBoolean(1, false);
 			pstmt.setString(2, userID);
 			rs = pstmt.executeQuery();
-						
+			
 			if(rs.next()){
 				//reviewee id
 				reviewInfo[0] = rs.getString("driverID");		
@@ -79,7 +90,10 @@ public class DatabaseController {
 				return reviewInfo;
 			}else{
 				
-				pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND driverID = ?");
+				DbUtils.closeQuietly(rs);
+				DbUtils.closeQuietly(pstmt);
+				
+				pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND driverID = ? AND endDate IS NOT NULL");
 				pstmt.setBoolean(1, false);
 				pstmt.setString(2, userID);
 				rs = pstmt.executeQuery();

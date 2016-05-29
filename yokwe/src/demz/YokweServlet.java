@@ -211,7 +211,11 @@ public class YokweServlet extends HttpServlet {
 		if((reviewInfo = dbController.getIncompleteReview(userID)) != null){
 			//Returns a string array of size 2, the reviewee id and what the reviewee was acting as (rider or driver)
 			JSONObject obj = new JSONObject();
+			
+			User reviewee = dbController.getUser(reviewInfo[0]);
+			
 			obj.put("revieweeID", reviewInfo[0]);
+			obj.put("accessToken", reviewee.accessToken);
 			obj.put("review_type", reviewInfo[1]);
 			obj.put("type", "review");
 			

@@ -46,9 +46,9 @@ public class DatabaseController {
 			
 			if(rr.type.equals("driver")){
 				System.out.println("Should be updating history table");
-				pstmt = conn.prepareStatement("UPDATE history SET reviewed = true WHERE driverID = ? AND riderID = ? AND endDate IS NOT NULL");
+				pstmt = conn.prepareStatement("UPDATE history SET driverReviewed = true WHERE driverID = ? AND riderID = ? AND endDate IS NOT NULL");
 			}else{
-				pstmt = conn.prepareStatement("UPDATE history SET reviewed = true WHERE riderID = ? AND driverID = ? AND endDate IS NOT NULL");
+				pstmt = conn.prepareStatement("UPDATE history SET riderReviewed = true WHERE riderID = ? AND driverID = ? AND endDate IS NOT NULL");
 			}
 			
 			pstmt.setString(1, rr.userID);
@@ -76,7 +76,8 @@ public class DatabaseController {
 		try {
 			conn = dataSource.getConnection();
 			
-			pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND riderID = ? AND endDate IS NOT NULL");
+			//Check if the driver has been reviewed by the rider
+			pstmt = conn.prepareStatement("SELECT * FROM history WHERE driverReviewed = ? AND riderID = ? AND endDate IS NOT NULL");
 			pstmt.setBoolean(1, false);
 			pstmt.setString(2, userID);
 			rs = pstmt.executeQuery();
@@ -93,7 +94,8 @@ public class DatabaseController {
 				DbUtils.closeQuietly(rs);
 				DbUtils.closeQuietly(pstmt);
 				
-				pstmt = conn.prepareStatement("SELECT * FROM history WHERE reviewed = ? AND driverID = ? AND endDate IS NOT NULL");
+				//Check if the rider has been reviewed by the driver
+				pstmt = conn.prepareStatement("SELECT * FROM history WHERE riderReviewed = ? AND driverID = ? AND endDate IS NOT NULL");
 				pstmt.setBoolean(1, false);
 				pstmt.setString(2, userID);
 				rs = pstmt.executeQuery();
@@ -1079,6 +1081,7 @@ public class DatabaseController {
 				pResponse.requesteeID = rs.getString("requesteeID");
 				pResponse.requesterID = rs.getString("requesterID");
 				pResponse.type = rs.getString("requestType");
+				pResponse.price = rs.getInt("price");
 				
 				return pResponse;
 			}
@@ -1113,9 +1116,6 @@ public class DatabaseController {
 				rideRequest.origin = rs.getString("origin");
 				rideRequest.destination = rs.getString("destination");
 				rideRequest.duration = rs.getLong("duration");
-				
-				System.out.println("This duration was retrieved: " + rs.getLong("duration"));
-
 				
 				return rideRequest;	
 			}

@@ -17,7 +17,7 @@ import java.sql.SQLException;
 
 import com.notnoop.apns.APNS;
 import com.notnoop.apns.ApnsService;
-
+import com.notnoop.exceptions.InvalidSSLConfig;
 import com.google.maps.GeoApiContext;
 import com.google.maps.DirectionsApi;
 import com.google.maps.model.DirectionsRoute;
@@ -165,6 +165,10 @@ public class YokweServlet extends HttpServlet {
 			dbController.createReview(rr);
 			
 		}
+		else if(type.equals("apns")){
+			String message = request.getParameter("message");
+			sendNotification(userID, message);
+		}
 	
 	}
 	
@@ -257,6 +261,7 @@ public class YokweServlet extends HttpServlet {
 				obj.put("origin", rr.origin);
 				obj.put("destination", rr.destination);
 				obj.put("duration", rr.duration);
+				obj.put("price", result.price);
 
 				return obj.toJSONString();
 			}else{
@@ -280,6 +285,7 @@ public class YokweServlet extends HttpServlet {
 				obj.put("driverDestination", dr.get(2));
 				obj.put("driverDuration", dr.get(4));
 				obj.put("accessToken", accessToken);
+				obj.put("price", result.price);
 
 				return obj.toJSONString();
 
@@ -667,16 +673,22 @@ public class YokweServlet extends HttpServlet {
 		String deviceToken = dbController.getUserApnsToken(userID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody(message).build();
-			service.push(deviceToken, payload);
+			ApnsService service;
+			try {
+				service = APNS.newService()
+				.withCert(resourceURL.getPath(), "presten2")
+				//.withCert(new FileInputStream("/home/demz/Downloads/backup stuff/certificate.p12"), "presten2")
+				.withProductionDestination()
+				.build();
+				
+				String payload = APNS.newPayload().alertBody(message).build();
+				service.push(deviceToken, payload);
+			} catch (InvalidSSLConfig e) {
+				// TODO Auto-generated catch block
+				e.printStackTrace();
+			}
 
-			System.out.println("A notification should have been sent to rider.");
+			System.out.println("A notification should have been sent.");
 		}
 		
 	}

@@ -17,10 +17,16 @@ public class FacebookHelper {
 	private static final String myAppSecret = "89f8c77f0a5ac4d40c549f381fce999b";
 	
 	public static String test(String accessToken, String userID){		
-		FacebookClient fbClient = new DefaultFacebookClient(accessToken, myAppSecret);
-		JsonObject pooper = fbClient.fetchObject(userID, JsonObject.class, Parameter.with("fields", "context.fields(mutual_friends)"));
-		return pooper.getJsonObject("context").getJsonObject("mutual_friends").getJsonObject("summary").getString("total_count").toString();
+		try {
+			FacebookClient fbClient = new DefaultFacebookClient(accessToken, myAppSecret);
+			JsonObject pooper = fbClient.fetchObject(userID, JsonObject.class, Parameter.with("fields", "context.fields(mutual_friends)"));
+			return pooper.getJsonObject("context").getJsonObject("mutual_friends").getJsonObject("summary").getString("total_count").toString();
+
+		} catch (Exception ex) {
+			ex.printStackTrace();
+		}
 		
+		return "0";
 	}
 	
 	public static boolean authenticated(String accessToken, String userID){

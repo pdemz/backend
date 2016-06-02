@@ -15,14 +15,7 @@ import java.util.*;
 
 public class StripeHelper {
 	
-	private String STRIPE_KEY = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
-	
-	public int getCost(int addedTime, int riderTime){
-		//times are in minutes
-		
-		return 100*addedTime + 20*riderTime;
-		//return 100;
-	}
+	private String STRIPE_KEY = "sk_live_F1gOogzs0M1aFqkAzVralu0d";
 	
 	public String makePayment(String connectID, String customerID, int amount){
 		Stripe.apiKey = STRIPE_KEY;
@@ -31,7 +24,7 @@ public class StripeHelper {
 		
 			Map<String, Object> chargeParams = new HashMap<String, Object>();
 			
-			int fee = (int) (amount * 0.15);
+			int fee = (int) (amount * 0.10);
 			
 			chargeParams.put("amount", amount);
 			chargeParams.put("currency", "usd");
@@ -78,6 +71,7 @@ public class StripeHelper {
 				cc.update(customerParams);
 			}
 			
+			System.out.println(cc.getId());
 			return cc.getId();
 			
 		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException

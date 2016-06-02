@@ -27,9 +27,11 @@ public class ProfileServlet extends HttpServlet {
 		
 		if(!type.equals("storeUser")){
 			//Authentication
+			//Check that if a Facebook id is provided that it can be authenticated with the access token
 			if(id != null && !FacebookHelper.authenticated(accessToken, id)){
 				return;
 
+			//If no FB id provided, check email and password in db
 			}else if (id == null){
 				String email = request.getParameter("email");
 				String password = request.getParameter("password");

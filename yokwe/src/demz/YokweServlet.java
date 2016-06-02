@@ -559,15 +559,18 @@ public class YokweServlet extends HttpServlet {
 				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
 						+ routes[0].legs[2].distance.inMeters;
 				
+				int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+				int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					User uu = dbController.getUser(driver.getID());
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
-					int riderTime = (int) (seconds/60 - addedTime);
+					//int riderTime = (int) (seconds/60 - addedTime);
 					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
-					int riderDistance = driver.getDistance() - addedDistance;
+					//int riderDistance = driver.getDistance() - addedDistance;
 					
 					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
 					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
@@ -618,13 +621,16 @@ public class YokweServlet extends HttpServlet {
 				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
 						+ routes[0].legs[2].distance.inMeters;
 				
+				int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+				int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
 				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
 					int addedTime = (int)((seconds-driver.getDuration())/60);
-					int riderTime = (int) (seconds/60 - addedTime);
+					//int riderTime = (int) (seconds/60 - addedTime);
 					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
-					int riderDistance = driver.getDistance() - addedDistance;
+					//int riderDistance = driver.getDistance() - addedDistance;
 					
 					User uu  = dbController.getUser(rider.getID());
 					
@@ -654,7 +660,7 @@ public class YokweServlet extends HttpServlet {
 	
 	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
 		//miles and minutes
-		return addedTime*20 + addedDistance*80 + riderTime*8 + riderDistance*20; 
+		return addedTime*20 + addedDistance*80 + riderTime*4 + riderDistance*16; 
 	}
 	
 	private void loadDrivers(){

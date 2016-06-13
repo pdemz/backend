@@ -143,6 +143,13 @@ public class YokweServlet extends HttpServlet {
 			String driverID = request.getParameter("driverID");
 			cancelTrip(riderID, driverID, userID);
 		
+		}else if(type.equals("pickUp")){
+			String riderID = request.getParameter("riderID");
+			pickUp(riderID, userID);
+		}else if(type.equals("start")){
+			String riderID = request.getParameter("riderID");
+			startTrip(riderID, userID);
+
 		}
 		
 		//When app polls the server, it will check to see all pending info, send info accordingly:
@@ -187,7 +194,20 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
+	private void startTrip(String riderID, String driverID){
+		dbController.updateTripStatus(driverID, riderID, "trip", "leg1");
+		sendNotification(riderID, "The driver has started the trip and is en route.");
+		
+	}
+	
+	private void pickUp(String riderID, String driverID){
+		dbController.updateTripStatus(driverID, riderID, "trip", "leg2");
+		sendNotification(riderID, "The driver has arrived.");
+		
+	}
+	
 	private void endTrip(String riderID, String driverID){
+		dbController.updateTripStatus(driverID, riderID, "history", "completed");
 		dbController.removeTrip(riderID, driverID);
 		endTripNotification(riderID);
 		endTripNotification(driverID);
@@ -195,6 +215,7 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private void cancelTrip(String riderID, String driverID, String senderID){
+		dbController.updateTripStatus(driverID, riderID, "history", "cancelled");
 		dbController.removeTrip(riderID, driverID);
 		if(riderID.equals(senderID)){
 			sendNotification(driverID, "The rider cancelled your trip.");
@@ -234,6 +255,7 @@ public class YokweServlet extends HttpServlet {
 			if(trip.driver.accessToken != null){
 				trip.mutualFriends = FacebookHelper.test(trip.driver.accessToken, trip.rider.getID());
 			}
+			
 			Gson gson = new Gson();
 			String json = gson.toJson(trip);
 			
@@ -564,7 +586,7 @@ public class YokweServlet extends HttpServlet {
 
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
-				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
+				if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
 					User uu = dbController.getUser(driver.getID());
 					
 					int addedTime = (int)((seconds - driver.getDuration())/60);
@@ -626,7 +648,7 @@ public class YokweServlet extends HttpServlet {
 				
 				// This is checking to see that the amount of time the driver must go out of their way
 				// is less than their set limit
-				if (seconds - driver.getDuration() <= driver.getLimit() * 60) {
+				if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
 					int addedTime = (int)((seconds-driver.getDuration())/60);
 					//int riderTime = (int) (seconds/60 - addedTime);
 					int addedDistance = (int)(distance/1609.344 - driver.getDistance());

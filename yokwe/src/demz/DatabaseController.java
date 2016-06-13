@@ -77,7 +77,7 @@ public class DatabaseController {
 			conn = dataSource.getConnection();
 			
 			//Check if the driver has been reviewed by the rider
-			pstmt = conn.prepareStatement("SELECT * FROM history WHERE driverReviewed = ? AND riderID = ? AND endDate IS NOT NULL");
+			pstmt = conn.prepareStatement("SELECT * FROM history WHERE driverReviewed = ? AND riderID = ? AND endDate IS NOT NULL AND status != 'cancelled'");
 			pstmt.setBoolean(1, false);
 			pstmt.setString(2, userID);
 			rs = pstmt.executeQuery();
@@ -95,7 +95,7 @@ public class DatabaseController {
 				DbUtils.closeQuietly(pstmt);
 				
 				//Check if the rider has been reviewed by the driver
-				pstmt = conn.prepareStatement("SELECT * FROM history WHERE riderReviewed = ? AND driverID = ? AND endDate IS NOT NULL");
+				pstmt = conn.prepareStatement("SELECT * FROM history WHERE riderReviewed = ? AND driverID = ? AND endDate IS NOT NULL AND status != 'cancelled'");
 				pstmt.setBoolean(1, false);
 				pstmt.setString(2, userID);
 				rs = pstmt.executeQuery();
@@ -122,6 +122,38 @@ public class DatabaseController {
 		
 		return null;
 		
+	}
+	
+	public void updateTripStatus(String driverID, String riderID, String table, String newStatus){
+		ResultSet rs = null;
+		java.sql.PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			
+			if (table.equals("trip")){
+				pstmt = conn.prepareStatement("UPDATE trip SET status = ? WHERE driverID = ?");
+			}else{
+				pstmt = conn.prepareStatement("UPDATE history SET status = ? WHERE driverID = ? AND riderID = ?");
+			}
+			
+			pstmt.setString(1, newStatus);
+			pstmt.setString(2, driverID);
+			
+			if(!table.equals("trip")){
+				pstmt.setString(3, riderID);
+			}
+			
+			pstmt.executeUpdate();
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
 	}
 
 	public boolean authenticateWithEmailAndPassword(String email, String password){
@@ -1027,6 +1059,7 @@ public class DatabaseController {
 			}
 
 			if(rs.next()){
+				trip.status = rs.getString("status");
 				trip.duration = rs.getLong("duration");
 				trip.price = rs.getInt("price");
 				String riderID = rs.getString("riderID");

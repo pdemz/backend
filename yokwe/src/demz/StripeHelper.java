@@ -9,7 +9,10 @@ import com.stripe.exception.InvalidRequestException;
 import com.stripe.model.Account;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
+import com.stripe.model.ExternalAccount;
 import com.stripe.model.Token;
+import com.stripe.model.Card;
+import com.stripe.model.BankAccount;
 
 import java.util.*;
 
@@ -53,6 +56,7 @@ public class StripeHelper {
 	public String createCustomer(String email, String paymentToken, String customerToken){
 		Customer cc = null;
 		try {
+			
 			Stripe.apiKey = STRIPE_KEY;
 
 			Map<String, Object> customerParams = new HashMap<String, Object>();
@@ -61,16 +65,14 @@ public class StripeHelper {
 			System.out.println("customer email: " + email);
 			customerParams.put("email", email);
 			
-			//Create a new customer token where one does not exist already
-			if(customerToken == null){
-				cc = Customer.create(customerParams);
+			//If a customer exists here, delete it
+			if(customerToken != null){
+				deleteCustomer(customerToken);
 				
-			//Update parameters if one does exist
-			}else{
-				cc = Customer.retrieve(customerToken);
-				cc.update(customerParams);
 			}
-			
+			//Create a new customer
+			cc = Customer.create(customerParams);
+
 			System.out.println(cc.getId());
 			return cc.getId();
 			
@@ -153,6 +155,89 @@ public class StripeHelper {
 			return returnString;
 			
 		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
+				| APIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public String deleteCustomer(String customerToken){
+		Customer cc = null;
+		
+		try {
+			Stripe.apiKey = STRIPE_KEY;
+			
+			//Remove it from the database
+			DatabaseController db = new DatabaseController();
+			db.deleteCustomerToken(customerToken);
+			
+			//Delete from the stripe servers
+			cc = Customer.retrieve(customerToken);
+			cc.delete().toString();
+			
+			
+		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
+				| APIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public String deleteBankAccount(String accountToken){
+		try {
+			
+			Stripe.apiKey = STRIPE_KEY;
+			
+			Account aa = Account.retrieve(accountToken, null);
+			//retrieve the bank account ID
+			String bankID = aa.getExternalAccounts().getData().get(0).getId();
+			
+			//Delete the bank account and return the result
+			return aa.getExternalAccounts().retrieve(bankID).delete().toString();
+
+		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
+				| APIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+		
+	}
+	
+	public String getBankAccountInfo(String accountToken){
+		try {
+			
+			Stripe.apiKey = STRIPE_KEY;
+			
+			Account aa = Account.retrieve(accountToken, null);
+			//retrieve the bank account ID
+			BankAccount bb = (BankAccount) aa.getExternalAccounts().getData().get(0);
+			
+			return bb.getBankName() + " ****" + bb.getLast4();
+
+		} catch (AuthenticationException | InvalidRequestException | IndexOutOfBoundsException | APIConnectionException | CardException
+				| APIException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+		return null;
+	}
+	
+	public String getCardInfo(String customerToken){
+		try {
+			
+			Stripe.apiKey = STRIPE_KEY;
+			
+			Customer cc = Customer.retrieve(customerToken);
+			//retrieve the card ID
+			String cardToken = cc.getDefaultSource();
+			Card card = (Card) cc.getSources().retrieve(cardToken);	
+			
+			return card.getBrand() + " ****" + card.getLast4();
+			
+		} catch (AuthenticationException | InvalidRequestException |  NullPointerException | IndexOutOfBoundsException | APIConnectionException | CardException
 				| APIException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();

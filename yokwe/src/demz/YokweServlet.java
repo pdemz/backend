@@ -150,6 +150,11 @@ public class YokweServlet extends HttpServlet {
 			String riderID = request.getParameter("riderID");
 			startTrip(riderID, userID);
 
+		}else if(type.equals("crossTrack")){
+			//Double ct = DistanceHelper.bearing(Math.toRadians(20), Math.toRadians(35), Math.toRadians(-172), Math.toRadians(-135));
+			//Double ct = DistanceHelper.crossTrack(39.158168, 39.158168, 39.952584, -75.524368, -75.524368, -75.165222);
+			Double ib = DistanceHelper.bearing(50, 50, 5, 3);
+			response.getWriter().println(ib);
 		}
 		
 		//When app polls the server, it will check to see all pending info, send info accordingly:
@@ -569,48 +574,50 @@ public class YokweServlet extends HttpServlet {
 		// For every driver in the system, check if the rider is within their
 		// set limit
 		for (Driver driver : drivers) {
-			try {
-				//Get the route distance for when the driver picks up the rider
-				routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
-						.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
-						.await();
+			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 30){
+				try {
+					//Get the route distance for when the driver picks up the rider
+					routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
+							.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
+							.await();
 
-				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
-						+ routes[0].legs[2].duration.inSeconds;
-				
-				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
-						+ routes[0].legs[2].distance.inMeters;
-				
-				int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
-				int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+					seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+							+ routes[0].legs[2].duration.inSeconds;
 
-				// This is checking to see that the amount of time the driver must go out of their way
-				// is less than their set limit
-				if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
-					User uu = dbController.getUser(driver.getID());
-					
-					int addedTime = (int)((seconds - driver.getDuration())/60);
-					//int riderTime = (int) (seconds/60 - addedTime);
-					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
-					//int riderDistance = driver.getDistance() - addedDistance;
-					
-					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
-					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
-					
-					String mutualFriends = "0";
-					if (uu.accessToken != null){
-						mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+					distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+							+ routes[0].legs[2].distance.inMeters;
+
+					int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+					int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+
+					// This is checking to see that the amount of time the driver must go out of their way
+					// is less than their set limit
+					if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
+						User uu = dbController.getUser(driver.getID());
+
+						int addedTime = (int)((seconds - driver.getDuration())/60);
+						//int riderTime = (int) (seconds/60 - addedTime);
+
+						int addedDistance = (int)(distance/1609.344 - driver.getDistance());
+						//int riderDistance = driver.getDistance() - addedDistance;
+
+						System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+						int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+
+						String mutualFriends = "0";
+						if (uu.accessToken != null){
+							mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+						}
+
+						//userID;accessToken;addedTime;mutualFriends;price_
+						returnString += driver.getID() + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
 					}
-					
-					//userID;accessToken;addedTime;mutualFriends;price_
-					returnString += driver.getID() + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
+
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
-
 		}
 
 		return returnString;
@@ -618,12 +625,12 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private String driveMatch(Driver driver){
-		
+
 		String returnString = "";
-		
+
 		//In order to access the API
 		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
-		
+
 		DirectionsRoute[] routes;
 		long seconds;
 		long distance;
@@ -631,53 +638,54 @@ public class YokweServlet extends HttpServlet {
 		// For every driver in the system, check if the rider is within their
 		// set limit
 		for (Rider rider : riders) {
-			try {
-				//Get the route distance for when the driver picks up the rider
-				routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
-						.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
-						.await();
+			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 30){
+				try {
+					//Get the route distance for when the driver picks up the rider
+					routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
+							.destination(driver.getDestination()).waypoints(rider.getOrigin(), rider.getDestination())
+							.await();
 
-				seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
-						+ routes[0].legs[2].duration.inSeconds;
-				
-				distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
-						+ routes[0].legs[2].distance.inMeters;
-				
-				int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
-				int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
-				
-				// This is checking to see that the amount of time the driver must go out of their way
-				// is less than their set limit
-				if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
-					int addedTime = (int)((seconds-driver.getDuration())/60);
-					//int riderTime = (int) (seconds/60 - addedTime);
-					int addedDistance = (int)(distance/1609.344 - driver.getDistance());
-					//int riderDistance = driver.getDistance() - addedDistance;
-					
-					User uu  = dbController.getUser(rider.getID());
-					
-					System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
-					int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
-					
-					String mutualFriends = "0";
-					if (uu.accessToken != null){
-						mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+					seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+							+ routes[0].legs[2].duration.inSeconds;
+
+					distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+							+ routes[0].legs[2].distance.inMeters;
+
+					int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+					int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+
+					// This is checking to see that the amount of time the driver must go out of their way
+					// is less than their set limit
+					if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
+						int addedTime = (int)((seconds-driver.getDuration())/60);
+						//int riderTime = (int) (seconds/60 - addedTime);
+						int addedDistance = (int)(distance/1609.344 - driver.getDistance());
+						//int riderDistance = driver.getDistance() - addedDistance;
+
+						User uu  = dbController.getUser(rider.getID());
+
+						System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+						int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+
+						String mutualFriends = "0";
+						if (uu.accessToken != null){
+							mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+						}
+
+						//id;accessToken;origin;destination;addedTime;mutualFriends;price_
+						returnString += rider.getID() + ";" + uu.accessToken + ";" 
+								+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
+
 					}
-					
-					//id;accessToken;origin;destination;addedTime;mutualFriends;price_
-					returnString += rider.getID() + ";" + uu.accessToken + ";" 
-							+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
 
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
 				}
-
-			} catch (Exception e) {
-				// TODO Auto-generated catch block
-				e.printStackTrace();
 			}
-
 		}
 		return returnString;
-		
+
 	}
 	
 	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
@@ -709,7 +717,7 @@ public class YokweServlet extends HttpServlet {
 				.withProductionDestination()
 				.build();
 				
-				String payload = APNS.newPayload().alertBody(message).build();
+				String payload = APNS.newPayload().alertBody(message).badge(1).build();
 				service.push(deviceToken, payload);
 			} catch (InvalidSSLConfig e) {
 				// TODO Auto-generated catch block

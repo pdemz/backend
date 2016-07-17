@@ -7,6 +7,8 @@ import javax.servlet.http.HttpServlet;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
+import org.json.simple.JSONObject;
+
 import com.google.gson.Gson;
 
 /**
@@ -60,6 +62,46 @@ public class ProfileServlet extends HttpServlet {
 			
 			response.getWriter().println(customerToken);
 			
+		}else if(type.equals("getCardInfo")){
+			StripeHelper sh = new StripeHelper();
+			User uu = dbController.getUser(id);
+			
+			//Retrieve credit card information
+			String cardInfo = sh.getCardInfo(uu.customerToken);
+
+			response.getWriter().print(cardInfo);
+
+			
+		}else if(type.equals("getBankInfo")){
+			StripeHelper sh = new StripeHelper();
+			User uu = dbController.getUser(id);
+			
+			//Retrieve credit card information
+			String bankInfo = sh.getBankAccountInfo(uu.accountToken);
+
+			response.getWriter().print(bankInfo);
+			
+		}else if(type.equals("deleteBank")){
+			StripeHelper sh = new StripeHelper();
+			User uu = dbController.getUser(id);
+			String accountToken = uu.accountToken;
+
+			System.out.println("atlas id: " + uu.atlasID);
+			System.out.println("accountToken: " + uu.accountToken);
+			
+			if(accountToken != null){
+				response.getWriter().print(sh.deleteBankAccount(accountToken));
+			}
+
+		}else if(type.equals("deleteCustomer")){
+			StripeHelper sh = new StripeHelper();
+			User uu = dbController.getUser(id);
+			String customerToken = uu.customerToken;
+
+			if(customerToken != null){
+				response.getWriter().print(sh.deleteCustomer(customerToken));
+			}
+		
 		}else if(type.equals("getUser")){
 			User uu = dbController.getUser(id);
 			Gson gson = new Gson();
@@ -67,6 +109,16 @@ public class ProfileServlet extends HttpServlet {
 			
 			response.getWriter().print(json);
 		
+		}else if (type.equals("deleteCustomer")){
+			User uu = dbController.getUser(id);
+			StripeHelper sh = new StripeHelper();
+			
+			String customerToken = uu.customerToken;
+			
+			if(customerToken != null){
+				sh.deleteCustomer(customerToken);
+			}
+			
 		//When a user logs in, update all their info or create a new user
 		}else if (type.equals("storeUser")){
 			User uu = new User();

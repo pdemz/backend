@@ -1,5 +1,6 @@
 demz/DriveOffer.class
 demz/Trip.class
+demz/DistanceHelper.class
 demz/Review.class
 demz/Rider.class
 demz/ProfileServlet.class

@@ -30,6 +30,29 @@ public class DatabaseController {
 		
 	}
 	
+	public void deleteCustomerToken(String customerToken){
+		ResultSet rs = null;
+		java.sql.PreparedStatement pstmt = null;
+		Connection conn = null;
+
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("UPDATE user SET customerToken = NULL WHERE customerToken = ?");
+			pstmt.setString(1, customerToken);
+			pstmt.executeUpdate();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
+
+	}
+	
 	public void createReview(Review rr){
 		Connection conn = null;
 		PreparedStatement pstmt = null;

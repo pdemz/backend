@@ -690,7 +690,7 @@ public class YokweServlet extends HttpServlet {
 	
 	private int getPrice(int addedTime, int addedDistance, int riderTime, int riderDistance){
 		//miles and minutes
-		return addedTime*20 + addedDistance*80 + riderTime*4 + riderDistance*16; 
+		return addedTime*50 + addedDistance*50 + riderTime*10 + riderDistance*10; 
 	}
 	
 	private void loadDrivers(){

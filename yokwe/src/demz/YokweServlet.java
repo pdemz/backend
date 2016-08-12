@@ -62,12 +62,10 @@ public class YokweServlet extends HttpServlet {
 	 * @see HttpServlet#doPost(HttpServletRequest request, HttpServletResponse response)
 	 */
 	protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-		// TODO Auto-generated method stub
-		
 		String type = request.getParameter("type");
 		String userID = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
-		
+								
 		ServletContext context = request.getSession().getServletContext();
 		resourceURL = context.getResource("/WEB-INF/certificate.p12");
 		
@@ -104,14 +102,16 @@ public class YokweServlet extends HttpServlet {
 			driveHandler(request, response, userID, accessToken);
 		
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
-		else if(type.equals("driverSelection"))
+		else if(type.equals("driverSelection")){
 			driverSelection(request.getParameter("driverID"), userID,
 					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
-		
-		else if(type.equals("riderSelection"))
+		}
+		else if(type.equals("riderSelection")){
+			String price = request.getParameter("price");
+			System.out.println(price);
 			riderSelection(request.getParameter("riderID"), userID,
 					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
-		
+		}
 		//Once the selectee accepts the ride, create a trip and delete the request
 		else if(type.equals("accept")){
 			String requesterID = request.getParameter("requesterID");
@@ -258,7 +258,7 @@ public class YokweServlet extends HttpServlet {
 		if((trip = dbController.getTrip(userID)) != null){
 			trip.mutualFriends = "0";
 			if(trip.driver.accessToken != null){
-				trip.mutualFriends = FacebookHelper.test(trip.driver.accessToken, trip.rider.getID());
+				trip.mutualFriends = FacebookHelper.getNumberOfMutualFriends(trip.driver.accessToken, trip.rider.getID());
 			}
 			
 			Gson gson = new Gson();
@@ -278,7 +278,7 @@ public class YokweServlet extends HttpServlet {
 				RideRequest rr = dbController.getRideRequest(userID);
 				String accessToken = dbController.getAccessToken(result.requesterID);
 				if(accessToken != null){
-					obj.put("mutualFriends", FacebookHelper.test(accessToken, result.requesteeID));
+					obj.put("mutualFriends", FacebookHelper.getNumberOfMutualFriends(accessToken, result.requesteeID));
 				}else{
 					obj.put("mutualFriends",  "0");
 				}
@@ -299,7 +299,7 @@ public class YokweServlet extends HttpServlet {
 				RideRequest rr = dbController.getRideRequest(result.requesterID);
 				String accessToken = dbController.getAccessToken(result.requesterID);
 				if(accessToken != null){
-					obj.put("mutualFriends", FacebookHelper.test(accessToken, result.requesteeID));
+					obj.put("mutualFriends", FacebookHelper.getNumberOfMutualFriends(accessToken, result.requesteeID));
 				}else{
 					obj.put("mutualFriends",  "0");
 				}
@@ -443,23 +443,8 @@ public class YokweServlet extends HttpServlet {
 	private void driverSelection(String driverID, String riderID, String addedTime, int price){
 		
 		//Create pendingResponse using info from rider and driver
-		dbController.createPendingResponse(riderID, driverID, addedTime, price, "ride");
-		
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(driverID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("You have received a ride request.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to driver.");
-		}
+		dbController.createPendingResponse(riderID, driverID, addedTime, price, "ride");		
+		sendNotification(driverID, "You have received a ride request.");
 		
 	}
 	
@@ -468,22 +453,7 @@ public class YokweServlet extends HttpServlet {
 		
 		//Create trip using info from rider and driver
 		dbController.createPendingResponse(driverID, riderID, addedTime, price, "drive");
-		
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(riderID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("You have been offered a ride.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to rider.");
-		}
+		sendNotification(riderID, "You have been offered a ride.");
 		
 	}
 	
@@ -574,7 +544,7 @@ public class YokweServlet extends HttpServlet {
 		// For every driver in the system, check if the rider is within their
 		// set limit
 		for (Driver driver : drivers) {
-			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 30){
+			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 100){
 				try {
 					//Get the route distance for when the driver picks up the rider
 					routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
@@ -606,7 +576,7 @@ public class YokweServlet extends HttpServlet {
 
 						String mutualFriends = "0";
 						if (uu.accessToken != null){
-							mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+							mutualFriends = FacebookHelper.getNumberOfMutualFriends(uu.accessToken, rider.getID());	
 						}
 
 						//userID;accessToken;addedTime;mutualFriends;price_
@@ -638,7 +608,7 @@ public class YokweServlet extends HttpServlet {
 		// For every driver in the system, check if the rider is within their
 		// set limit
 		for (Rider rider : riders) {
-			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 30){
+			if(Math.abs(DistanceHelper.getCrossTrackFromDriverAndRider(driver, rider)) < 100){
 				try {
 					//Get the route distance for when the driver picks up the rider
 					routes = DirectionsApi.newRequest(context).origin(driver.getOrigin())
@@ -665,11 +635,13 @@ public class YokweServlet extends HttpServlet {
 						User uu  = dbController.getUser(rider.getID());
 
 						System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+						
 						int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
 
 						String mutualFriends = "0";
 						if (uu.accessToken != null){
-							mutualFriends = FacebookHelper.test(uu.accessToken, rider.getID());	
+							mutualFriends = FacebookHelper.getNumberOfMutualFriends(driver.accessToken, rider.getID());	
+							System.out.println("Mutual friends: " + mutualFriends);
 						}
 
 						//id;accessToken;origin;destination;addedTime;mutualFriends;price_

@@ -239,6 +239,7 @@ public class YokweServlet extends HttpServlet {
 	private String getUpdate(String userID) {
 		String[] reviewInfo;
 		if((reviewInfo = dbController.getIncompleteReview(userID)) != null){
+			
 			//Returns a string array of size 2, the reviewee id and what the reviewee was acting as (rider or driver)
 			JSONObject obj = new JSONObject();
 			
@@ -256,7 +257,6 @@ public class YokweServlet extends HttpServlet {
 		Trip trip;
 		
 		if((trip = dbController.getTrip(userID)) != null){
-			trip.mutualFriends = "0";
 			if(trip.driver.accessToken != null){
 				trip.mutualFriends = FacebookHelper.getNumberOfMutualFriends(trip.driver.accessToken, trip.rider.getID());
 			}

@@ -3,7 +3,7 @@ package demz;
 public class Trip {
 	public Rider rider;
 	public Driver driver;
-	public String mutualFriends;
+	public String mutualFriends = "0";
 	public String status;
 	public long duration; //Seconds
 	public long length; //Meters

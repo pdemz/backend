@@ -62,9 +62,11 @@ public class StripeHelper {
 			Map<String, Object> customerParams = new HashMap<String, Object>();
 			customerParams.put("description", "Customer for Atlas");
 			customerParams.put("source", paymentToken);
-			System.out.println("customer email: " + email);
-			customerParams.put("email", email);
 			
+			if(!email.equals(null)){
+				System.out.println("customer email: " + email);
+				customerParams.put("email", email);
+			}
 			//If a customer exists here, delete it
 			if(customerToken != null){
 				deleteCustomer(customerToken);

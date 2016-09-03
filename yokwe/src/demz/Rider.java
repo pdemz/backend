@@ -15,6 +15,8 @@ public class Rider {
 	private String destination;
 	private String apnsToken;
 	private String driverID;
+	public String originAddress;
+	public String destinationAddress;
 	private long duration;
 	
 	//When a rider is recalled from database

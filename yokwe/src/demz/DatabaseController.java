@@ -339,6 +339,47 @@ public class DatabaseController {
 		return apnsToken;
 	}
 	
+	//Returns an arrayList of all the users in the database
+	public ArrayList<User> getAllUsers(){
+		ResultSet rs = null;
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		
+		ArrayList<User> userList = new ArrayList<User>();
+		
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery("SELECT * FROM user");
+			while(rs.next()){
+				User uu = new User();
+				uu.aboutMe = rs.getString("aboutMe");
+				uu.accessToken = rs.getString("accessToken");
+				uu.apnsToken = rs.getString("apnsToken");
+				uu.email = rs.getString("email");
+				uu.id = rs.getString("id");
+				uu.phone = rs.getString("phone");
+				uu.customerToken = rs.getString("customerToken");
+				uu.accountToken = rs.getString("accountToken");
+				
+				userList.add(uu);
+			}
+			
+			return userList;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+		
+		
+		return null;
+	}
+	
 	public User getUser(String userID){
 		ResultSet rs = null;
 		java.sql.Statement stmt = null;
@@ -1090,7 +1131,7 @@ public class DatabaseController {
 				
 				trip.rider = new Rider(riderID, rs.getString("rOrigin"), rs.getString("rDestination"), rs.getLong("riderDuration"), getUser(riderID).customerToken);
 				trip.driver = new Driver(driverID, 30, rs.getString("dOrigin"), rs.getString("dDestination"), rs.getLong("duration"), rs.getInt("length"), getUser(driverID).accountToken);
-							
+				
 				trip.rider.accessToken = getAccessToken(riderID);
 				trip.driver.accessToken = getAccessToken(driverID);
 				
@@ -1101,6 +1142,10 @@ public class DatabaseController {
 				trip.rider.phone = riderInfo[1];
 				trip.driver.aboutMe = driverInfo[0];
 				trip.driver.phone = driverInfo[1];
+				
+				//Only doing this here until addresses start being stored in the database
+				trip.rider.originAddress = MapsHelper.addressFromCoordinateString(trip.rider.getOrigin());
+				trip.rider.destinationAddress = MapsHelper.addressFromCoordinateString(trip.rider.getDestination());
 				
 				return trip;
 			}

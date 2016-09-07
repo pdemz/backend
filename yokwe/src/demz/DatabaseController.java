@@ -398,6 +398,7 @@ public class DatabaseController {
 				uu.phone = rs.getString("phone");
 				uu.customerToken = rs.getString("customerToken");
 				uu.accountToken = rs.getString("accountToken");
+				uu.name = rs.getString("name");
 				
 				System.out.println("definitely returned a user here");
 
@@ -1126,6 +1127,7 @@ public class DatabaseController {
 				trip.status = rs.getString("status");
 				trip.duration = rs.getLong("duration");
 				trip.price = rs.getInt("price");
+				trip.addedTime = rs.getDouble("addedTime");
 				String riderID = rs.getString("riderID");
 				String driverID = rs.getString("driverID");
 				

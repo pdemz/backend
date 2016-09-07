@@ -69,6 +69,8 @@ public class YokweServlet extends HttpServlet {
 		ServletContext context = request.getSession().getServletContext();
 		resourceURL = context.getResource("/WEB-INF/certificate.p12");
 		
+		PhoneHelper ph = new PhoneHelper("+13022706805", "send", null);
+		
 		//Authentication
 		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
 			return;
@@ -580,7 +582,7 @@ public class YokweServlet extends HttpServlet {
 						}
 
 						//userID;accessToken;addedTime;mutualFriends;price_
-						returnString += driver.getID() + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
+						returnString += driver.getID() + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + ";" + uu.name + "_";
 					}
 
 				} catch (Exception e) {
@@ -646,7 +648,7 @@ public class YokweServlet extends HttpServlet {
 
 						//id;accessToken;origin;destination;addedTime;mutualFriends;price_
 						returnString += rider.getID() + ";" + uu.accessToken + ";" 
-								+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + "_";
+								+ rider.getOrigin() + ";" + rider.getDestination() + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + ";" + uu.name + "_";
 
 					}
 

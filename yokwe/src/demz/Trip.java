@@ -8,6 +8,7 @@ public class Trip {
 	public long duration; //Seconds
 	public long length; //Meters
 	public int price; //cents
+	public double addedTime; //Seconds
 	private String type = "trip";
 	
 }

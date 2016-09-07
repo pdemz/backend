@@ -200,6 +200,11 @@ public class ProfileServlet extends HttpServlet {
 			String returnString = sh.addBankAccount(accountToken, email, name, routingNum, accountNum);
 			
 			response.getWriter().print(returnString);
+		}else if (type.equals("phoneVerification")){
+			//Handle request
+			
+			
+			//Send response
 		}
 		
 	}

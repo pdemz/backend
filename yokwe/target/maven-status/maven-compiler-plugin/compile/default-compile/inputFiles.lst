@@ -6,11 +6,14 @@
 /home/demz/git/backend/yokwe/src/demz/PrivacyPolicy.java
 /home/demz/git/backend/yokwe/src/demz/Driver.java
 /home/demz/git/backend/yokwe/src/demz/DriveOffer.java
+/home/demz/git/backend/yokwe/src/demz/PhoneHelper.java
 /home/demz/git/backend/yokwe/src/demz/Review.java
 /home/demz/git/backend/yokwe/src/demz/RideRequest.java
+/home/demz/git/backend/yokwe/src/demz/UserInfoServlet.java
 /home/demz/git/backend/yokwe/src/demz/pendingResponse.java
 /home/demz/git/backend/yokwe/src/demz/Trip.java
 /home/demz/git/backend/yokwe/src/demz/DistanceHelper.java
 /home/demz/git/backend/yokwe/src/demz/ProfileServlet.java
 /home/demz/git/backend/yokwe/src/demz/DatabaseController.java
 /home/demz/git/backend/yokwe/src/demz/YokweServlet.java
+/home/demz/git/backend/yokwe/src/demz/MapsHelper.java

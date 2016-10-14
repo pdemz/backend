@@ -69,7 +69,7 @@ public class YokweServlet extends HttpServlet {
 		ServletContext context = request.getSession().getServletContext();
 		resourceURL = context.getResource("/WEB-INF/certificate.p12");
 		
-		PhoneHelper ph = new PhoneHelper("+13022706805", "send", null);
+		PhoneHelper ph = new PhoneHelper("302-270-6805", "send", null);
 		
 		//Authentication
 		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
@@ -182,7 +182,25 @@ public class YokweServlet extends HttpServlet {
 		else if(type.equals("apns")){
 			String message = request.getParameter("message");
 			sendNotification(userID, message);
+			
+		//Purely for verifying phone numbers	
+		}else if(type.equals("sms")){
+			String code = null;
+			String number = request.getParameter("number");
+			String action = request.getParameter("action");
+			
+			if (action.equals("verify")){
+				code = request.getParameter("code");
+			}
+			
+			PhoneHelper pp = new PhoneHelper(number, action, code);
+			boolean verified = pp.handle();
+			
+			JSONObject json = new JSONObject();
+			json.put("verified", verified);
+			response.getWriter().print(json.toString());
 		}
+
 	
 	}
 	

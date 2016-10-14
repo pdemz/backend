@@ -76,6 +76,8 @@ public class ProfileServlet extends HttpServlet {
 			StripeHelper sh = new StripeHelper();
 			User uu = dbController.getUser(id);
 			
+			System.out.println("DB Acct Token: " + uu.accountToken);
+			
 			//Retrieve credit card information
 			String bankInfo = sh.getBankAccountInfo(uu.accountToken);
 

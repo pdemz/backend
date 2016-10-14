@@ -23,46 +23,61 @@ public class PhoneHelper{
 	String code;
 	
 	public PhoneHelper(String newNumber, String newType, String newCode){
-		number = newNumber;
+		number = processNumber(newNumber);
 		type = newType;
 		code = newCode;
-		handle();
 	}
 	
 	//Handles the verification step and returns the proper JSON string for the app
-	private boolean handle(){
+	public boolean handle(){
+		DatabaseController db = new DatabaseController();
 		
 		//Send random 4 digit number to phone and store that number in the database
 		if (type.equals("send")){
 			//generate a 4 digit integer
-	        int randomPIN = (int)(Math.random()*9000)+1000;
-	        code = String.valueOf(randomPIN);
-	        
-	        //Send the code to the phone
-	        sendSMSMessage(code, number);
-	        
+			int randomPIN = (int)(Math.random()*9000)+1000;
+			code = String.valueOf(randomPIN);
+
+			//Store the code in the DB
+			db.storeVerificationCode(number, code);
+			
+			//Send the code to the phone
+			sendSMSMessage("Atlas verification code: " + code, number);
+
 		}else if(type.equals("verify")){
+
+			//get the code from the database and compare it
+			String storedCode = db.retrieveVerificationCode(number);
+
+			//if equal delete it from the database and return true
+			if(code.equals(storedCode)){
+				return true;
+
+			}
 			
-			//get the code from the database
-			
-			//if equal 
-			return true;
 		}
-		
+
 		return false;
+
 		
 	}
 
 	private void sendSMSMessage(String message, 
 			String phoneNumber) {
 			BasicAWSCredentials credentials = new BasicAWSCredentials("AKIAJMAG65OXWWYGREDA", "mPsfVzS3cJ33e5C0oGRGcUOQV7sF02m9sABsJBCc");
-			AmazonSNSClient snsClient = AmazonSNSClientBuilder.standard()
-					.withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
+			AmazonSNSClient snsClient = new AmazonSNSClient(new AWSStaticCredentialsProvider(credentials));
 	        PublishResult result = snsClient.publish(new PublishRequest()
 	                        .withMessage(message)
 	                        .withPhoneNumber(phoneNumber));
 	        System.out.println(result);
 
 	}
+	
+	private String processNumber(String number){
+		String digits = number.replaceAll("[^0-9.]", "");
+		
+		return "+1" + digits;
+	}
+
 	
 }

@@ -30,6 +30,59 @@ public class DatabaseController {
 		
 	}
 	
+	//Retrieves the verification code created when a new user attempts to log in
+	public String retrieveVerificationCode(String number){
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			
+			pstmt = conn.prepareStatement("SELECT * FROM sms WHERE number = ?");
+			pstmt.setString(1, number);
+			rs = pstmt.executeQuery();
+						
+			if(rs.next()){
+				return rs.getString("code");
+
+			}
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
+		
+		return null;
+	}
+	
+	//Stores the verification code created when a new user attempts to log in
+	public void storeVerificationCode(String number, String code){
+		java.sql.PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			
+			pstmt = conn.prepareStatement("REPLACE INTO sms (number, code) VALUES (?, ?)");
+			pstmt.setString(1, number);
+			pstmt.setString(2, code);
+			pstmt.executeUpdate();
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+	}
+	
 	public void deleteCustomerToken(String customerToken){
 		ResultSet rs = null;
 		java.sql.PreparedStatement pstmt = null;

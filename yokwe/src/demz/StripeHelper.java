@@ -23,6 +23,12 @@ public class StripeHelper {
 	public String makePayment(String connectID, String customerID, int amount){
 		Stripe.apiKey = STRIPE_KEY;
 		
+		System.out.println("Connect ID: " + connectID);
+		System.out.println("Customer ID: " + customerID);
+		
+		connectID = connectID.replace("\n", "").replace("\r", "");
+		customerID = customerID.replace("\n", "").replace("\r", "");
+		
 		try{
 		
 			Map<String, Object> chargeParams = new HashMap<String, Object>();
@@ -212,10 +218,14 @@ public class StripeHelper {
 		try {
 			
 			Stripe.apiKey = STRIPE_KEY;
-			
+			System.out.println("Stripe Key: " + STRIPE_KEY);
+			System.out.println("Accountt token used for retrieval: " + accountToken);
+			accountToken = accountToken.replace("\n", "").replace("\r","");
 			Account aa = Account.retrieve(accountToken, null);
 			//retrieve the bank account ID
 			BankAccount bb = (BankAccount) aa.getExternalAccounts().getData().get(0);
+			
+			System.out.println(bb.toString());
 			
 			return bb.getBankName() + " ****" + bb.getLast4();
 

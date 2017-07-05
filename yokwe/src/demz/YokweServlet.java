@@ -21,6 +21,11 @@ import com.notnoop.exceptions.InvalidSSLConfig;
 import com.google.maps.GeoApiContext;
 import com.google.maps.DirectionsApi;
 import com.google.maps.model.DirectionsRoute;
+import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.services.s3.AmazonS3;
+import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.model.GetObjectRequest;
+import com.amazonaws.services.s3.model.S3Object;
 import com.google.gson.*;
 
 import org.json.simple.*;
@@ -65,11 +70,8 @@ public class YokweServlet extends HttpServlet {
 		String type = request.getParameter("type");
 		String userID = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
-								
-		ServletContext context = request.getSession().getServletContext();
-		resourceURL = context.getResource("/WEB-INF/certificate.p12");
 		
-		PhoneHelper ph = new PhoneHelper("302-270-6805", "send", null);
+		//PhoneHelper ph = new PhoneHelper("302-270-6805", "send", null);
 		
 		//Authentication
 		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
@@ -168,6 +170,7 @@ public class YokweServlet extends HttpServlet {
 		else if(type.equals("update")){
 			response.getWriter().print(getUpdate(userID));
 		}
+		
 		else if(type.equals("review")){
 			Review rr = new Review();
 			rr.reviewerID = userID;
@@ -350,7 +353,6 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private String makePayment(String riderID, String driverID){
-		
 		//Get customer and connect tokens from db along with trip price
 		User rider = dbController.getUser(riderID);
 		User driver = dbController.getUser(driverID);
@@ -363,99 +365,30 @@ public class YokweServlet extends HttpServlet {
 	}
 	
 	private void endTripNotification(String userID){
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(userID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("Your trip has completed.").build();
-			service.push(deviceToken, payload);
+		sendNotification(userID, "You have completed your trip.");
 
-			System.out.println("A notification should have been sent to rider.");
-		}
 		
 	}
 	
 	private void rideRejectionNotification(String userID){
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(userID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("Your ride request was denied.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to rider.");
-		}
+		sendNotification(userID, "Your ride request was denied.");
 		
 	}
 	
 	private void driveRejectionNotification(String userID){
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(userID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("Your offer to drive was denied.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to driver.");
-		}
+		sendNotification(userID, "Your offer to drive was denied.");
 		
 	}
 	
 	//Notify driver that a rider accepted their drive request
 	private void driveRequestAcceptance(String driverID){
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(driverID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("A rider has accepted your offer to drive them.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to driver.");
-		}
+		sendNotification(driverID, "A rider has accepted your offer to drive them.");
 		
 	}
 	
 	//Notify rider that a driver accepted their ride request
 	private void rideRequestAcceptance(String riderID){
-		//Get driver apnsToken from database
-		String deviceToken = dbController.getUserApnsToken(riderID);
-		
-		if (deviceToken != null && deviceToken.length() > 1){
-			ApnsService service =
-				    APNS.newService()
-				    .withCert(resourceURL.getPath(), "presten2")
-				    .withProductionDestination()
-				    .build();
-			
-			String payload = APNS.newPayload().alertBody("A driver has accepted your request to ride with them.").build();
-			service.push(deviceToken, payload);
-
-			System.out.println("A notification should have been sent to rider.");
-		}
+		sendNotification(riderID, "A driver has accepted your request to ride with them.");
 		
 	}
 	
@@ -482,9 +415,6 @@ public class YokweServlet extends HttpServlet {
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
 		String apns = request.getParameter("apnsToken");
-		
-		System.out.println("Here's your sign: " + accessToken);
-
 		
 		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
@@ -697,21 +627,34 @@ public class YokweServlet extends HttpServlet {
 	
 	//Send notification to user
 	private void sendNotification(String userID, String message){
-		//Get driver apnsToken from database
+		
+		//Get user apnsToken from database
 		String deviceToken = dbController.getUserApnsToken(userID);
 		
 		if (deviceToken != null && deviceToken.length() > 1){
 			ApnsService service;
 			try {
+				
+				//Get apns certificate from S3 bucket
+				BasicAWSCredentials credentials = new BasicAWSCredentials("AKIAJMAG65OXWWYGREDA", "mPsfVzS3cJ33e5C0oGRGcUOQV7sF02m9sABsJBCc");
+				AmazonS3 s3Client = new AmazonS3Client(credentials);        
+				S3Object object = s3Client.getObject(
+				                  new GetObjectRequest("elasticbeanstalk-us-west-2-242898210520", "certificate.p12"));
+				InputStream objectData = object.getObjectContent();
+				
 				service = APNS.newService()
-				.withCert(resourceURL.getPath(), "presten2")
+				.withCert(objectData, "presten")
+				//.withCert(resourceURL.getPath(), "presten")
 				//.withCert(new FileInputStream("/home/demz/Downloads/backup stuff/certificate.p12"), "presten2")
 				.withProductionDestination()
 				.build();
 				
-				String payload = APNS.newPayload().alertBody(message).badge(1).build();
+				String payload = APNS.newPayload().alertBody(message).badge(1).sound("default").build();
 				service.push(deviceToken, payload);
-			} catch (InvalidSSLConfig e) {
+				
+				objectData.close();
+
+			} catch (InvalidSSLConfig | IOException e) {
 				// TODO Auto-generated catch block
 				e.printStackTrace();
 			}

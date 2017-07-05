@@ -3,12 +3,15 @@ package demz;
 public class DistanceHelper {
 
 	public static double getCrossTrackFromDriverAndRider(Driver driver, Rider rider){
+		System.out.println(driver.getID());
+		System.out.println(rider.getID());
+
 		String[] driverStart = driver.getOrigin().split(",");
 		String[] driverEnd = driver.getDestination().split(",");
 		String[] riderStart = rider.getOrigin().split(",");
 		
 		//Convert the stored origin and destination strings into latlong doubles
-		
+			
 		double lat1 = Double.parseDouble(driverStart[0]); 
 		double lat2 = Double.parseDouble(driverEnd[0]);
 		double lat3 = Double.parseDouble(riderStart[0]);

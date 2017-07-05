@@ -24,7 +24,8 @@ public class DatabaseController {
 		dataSource = new MysqlDataSource();
 		dataSource.setUser("demz");
 		dataSource.setPassword("Iheartnewyork!1");
-		dataSource.setServerName("eastcoast.cekfwxanl7gp.us-east-1.rds.amazonaws.com");
+		dataSource.setServerName("atlasdb.cptwy6lrapgs.us-west-1.rds.amazonaws.com");
+		//dataSource.setServerName("eastcoast.cekfwxanl7gp.us-east-1.rds.amazonaws.com");
 		dataSource.setDatabaseName("demzdb");
 		dataSource.setPort(3306);
 		

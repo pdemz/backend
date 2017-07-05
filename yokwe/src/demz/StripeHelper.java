@@ -10,6 +10,7 @@ import com.stripe.model.Account;
 import com.stripe.model.Charge;
 import com.stripe.model.Customer;
 import com.stripe.model.ExternalAccount;
+import com.stripe.model.Source;
 import com.stripe.model.Token;
 import com.stripe.model.Card;
 import com.stripe.model.BankAccount;
@@ -19,6 +20,7 @@ import java.util.*;
 public class StripeHelper {
 	
 	private String STRIPE_KEY = "sk_live_F1gOogzs0M1aFqkAzVralu0d";
+	//private String STRIPE_KEY = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
 	
 	public String makePayment(String connectID, String customerID, int amount){
 		Stripe.apiKey = STRIPE_KEY;
@@ -48,8 +50,7 @@ public class StripeHelper {
 			
 			return cc.toString();
 		
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -84,8 +85,7 @@ public class StripeHelper {
 			System.out.println(cc.getId());
 			return cc.getId();
 			
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -101,7 +101,7 @@ public class StripeHelper {
 			Stripe.apiKey = STRIPE_KEY;
 			
 			Map<String, Object> accountParams = new HashMap<String, Object>();
-			accountParams.put("managed", "true");
+			accountParams.put("type", "custom");
 			accountParams.put("country", "US");
 			accountParams.put("legal_entity[type]", "individual");
 			accountParams.put("legal_entity[first_name]", firstName);
@@ -124,8 +124,7 @@ public class StripeHelper {
 			
 			return ac.getId();
 			
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -162,8 +161,7 @@ public class StripeHelper {
 						
 			return returnString;
 			
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -185,8 +183,7 @@ public class StripeHelper {
 			cc.delete().toString();
 			
 			
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -205,8 +202,7 @@ public class StripeHelper {
 			//Delete the bank account and return the result
 			return aa.getExternalAccounts().retrieve(bankID).delete().toString();
 
-		} catch (AuthenticationException | InvalidRequestException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -229,8 +225,7 @@ public class StripeHelper {
 			
 			return bb.getBankName() + " ****" + bb.getLast4();
 
-		} catch (AuthenticationException | InvalidRequestException | IndexOutOfBoundsException | APIConnectionException | CardException
-				| APIException e) {
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
@@ -243,14 +238,19 @@ public class StripeHelper {
 			Stripe.apiKey = STRIPE_KEY;
 			
 			Customer cc = Customer.retrieve(customerToken);
-			//retrieve the card ID
-			String cardToken = cc.getDefaultSource();
-			Card card = (Card) cc.getSources().retrieve(cardToken);	
 			
-			return card.getBrand() + " ****" + card.getLast4();
+			//retrieve the (payment) source ID
+			String stripeToken = cc.getDefaultSource();
+			Source source = (Source) cc.getSources().retrieve(stripeToken);
 			
-		} catch (AuthenticationException | InvalidRequestException |  NullPointerException | IndexOutOfBoundsException | APIConnectionException | CardException
-				| APIException e) {
+			//Get card info from source
+			Map<String, String> card = source.getTypeData();
+			String brand = card.get("brand");
+			String last4 = card.get("last4");
+		
+			return brand + " ****" + last4;
+			
+		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}

@@ -5,15 +5,14 @@ demz/Review.class
 demz/Rider.class
 demz/ProfileServlet.class
 demz/UserInfoServlet.class
-Review.class
-demz/MapsHelper.class
 demz/FacebookHelper.class
+demz/MapsHelper.class
 demz/PrivacyPolicy.class
 demz/User.class
 demz/DatabaseController.class
 demz/Driver.class
 demz/PhoneHelper.class
 demz/StripeHelper.class
-demz/RideRequest.class
 demz/pendingResponse.class
+demz/RideRequest.class
 demz/YokweServlet.class

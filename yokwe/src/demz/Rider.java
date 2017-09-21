@@ -17,7 +17,7 @@ public class Rider {
 	private String driverID;
 	public String originAddress;
 	public String destinationAddress;
-	private long duration;
+	public long duration;
 	
 	//When a rider is recalled from database
 	public Rider(String newId, String newOrigin, String newDest, long newDuration, String newCustomerToken){

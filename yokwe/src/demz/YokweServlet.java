@@ -108,14 +108,14 @@ public class YokweServlet extends HttpServlet {
 		//Once a selection is made, notify the selectee, and update the DB to reflect the match
 		else if(type.equals("driverSelection")){
 			driverSelection(request.getParameter("driverID"), userID,
-					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
+					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")), request);
 		}
 		else if(type.equals("riderSelection")){
 			String price = request.getParameter("price");
-			System.out.println(price);
 			riderSelection(request.getParameter("riderID"), userID,
-					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")));
+					request.getParameter("addedTime"), Integer.parseInt(request.getParameter("price")), request);
 		}
+		
 		//Once the selectee accepts the ride, create a trip and delete the request
 		else if(type.equals("accept")){
 			String requesterID = request.getParameter("requesterID");
@@ -202,8 +202,20 @@ public class YokweServlet extends HttpServlet {
 			JSONObject json = new JSONObject();
 			json.put("verified", verified);
 			response.getWriter().print(json.toString());
+			
+		//Delete the trip or request from the DB	
+		}else if(type.equals("deleteTrip")){
+			String tripID = request.getParameter("tripID");
+			
+			//Remove the trip from the DB
+			dbController.deleteTrip(tripID, userID);
+			
+			
+		}else if(type.equals("getTrips")){
+		//Get all trips and requests from the queue
+			response.getWriter().print(getTripList(userID));
+			
 		}
-
 	
 	}
 	
@@ -258,7 +270,109 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
-	//Check user status in the system
+	//Return all trips for a given user that are not active or awaiting the user's response
+	private String getTripList(String userID){
+		ArrayList<TripStatusObject> tripOverviews = new ArrayList<TripStatusObject>();
+		
+		ArrayList<Trip> trips = dbController.getAllTrips(userID);
+
+		//Build the list of info to return. It won't just be trips - that will be too much on the front end
+		//to, from, status, mode, userID, accessToken
+		//Statuses will be customized on the front end because thats where the Facebook api calls are made
+		
+		//Just send the whole trip over. Also start storing name of origin and destination in db
+		for(Trip trip : trips){
+			TripStatusObject tripOverview = new TripStatusObject();
+			
+			//User is the rider
+			if(trip.riderID != null && trip.riderID.equals(userID)){
+				tripOverview.userID = trip.driverID;
+				tripOverview.accessToken = dbController.getAccessToken(trip.driverID);
+				tripOverview.mode = "Riding";
+				tripOverview.originName = MapsHelper.localityFromCoordinateString(trip.rOrigin);
+				tripOverview.destinationName = MapsHelper.localityFromCoordinateString(trip.rDestination);
+				tripOverview.status = trip.status;
+				tripOverview.tripID = trip.id;
+				
+				
+			//User is the driver
+			}else if(trip.driverID != null && trip.driverID.equals(userID)){
+				tripOverview.userID = trip.riderID;
+				tripOverview.accessToken = dbController.getAccessToken(trip.riderID);
+				tripOverview.mode = "Driving";
+				tripOverview.originName = MapsHelper.localityFromCoordinateString(trip.dOrigin);
+				tripOverview.destinationName = MapsHelper.localityFromCoordinateString(trip.dDestination);
+				tripOverview.status = trip.status;
+				tripOverview.tripID = trip.id;
+				
+			}
+			
+			tripOverviews.add(tripOverview);
+			
+		}
+		
+		Gson gson = new Gson();
+		return gson.toJson(tripOverviews);
+		
+	}
+	
+	//This determines what screen will be displayed when the user opens the app, if their action is required or they are on trip
+	private String getUpdateWithTripsDesign(String userID){
+		
+		//First thing we want is for the user to review the last person they rode with
+		String[] reviewInfo;
+		if((reviewInfo = dbController.getIncompleteReview(userID)) != null){
+			
+			//Returns a string array of size 2, the reviewee id and what the reviewee was acting as (rider or driver)
+			JSONObject obj = new JSONObject();
+			
+			User reviewee = dbController.getUser(reviewInfo[0]);
+			
+			obj.put("revieweeID", reviewInfo[0]);
+			obj.put("accessToken", reviewee.accessToken);
+			obj.put("review_type", reviewInfo[1]);
+			obj.put("type", "review");
+			
+			return obj.toJSONString();
+			
+		}
+		
+		//Figure out what the user's current state is if they are on trip or if there is a request awaiting their response.
+		Trip trip;
+		
+		if((trip = dbController.getActiveTrip(userID)) != null){
+			trip.rider = dbController.getRider(trip.riderID);
+			trip.driver = dbController.getDriver(trip.driverID);
+			
+			if(trip.driver.accessToken != null){
+				trip.mutualFriends = FacebookHelper.getNumberOfMutualFriends(trip.driver.accessToken, trip.rider.getID());
+			}
+			
+			Gson gson = new Gson();
+			return gson.toJson(trip);
+			
+		}
+		
+		//If the user has a ride/drive request awaiting their response, show it. Finish this - will require changing the call in the DB
+		if((trip = dbController.getPendingResponse(userID)) != null){
+			trip.rider = dbController.getRider(trip.riderID);
+			trip.driver = dbController.getDriver(trip.driverID);
+			
+			if(trip.driver.accessToken != null){
+				trip.mutualFriends = FacebookHelper.getNumberOfMutualFriends(trip.driver.accessToken, trip.rider.getID());
+			}
+			
+			Gson gson = new Gson();
+			return gson.toJson(trip);
+			
+		}
+		
+		return null;
+		
+		
+	}
+	
+	//Send data to client to tell it what screen to display on startup
 	private String getUpdate(String userID) {
 		String[] reviewInfo;
 		if((reviewInfo = dbController.getIncompleteReview(userID)) != null){
@@ -277,6 +391,7 @@ public class YokweServlet extends HttpServlet {
 			
 		}
 		
+		//If the user is on trip, return the trip. Status should not equal "waiting"
 		Trip trip;
 		
 		if((trip = dbController.getTrip(userID)) != null){
@@ -285,9 +400,9 @@ public class YokweServlet extends HttpServlet {
 			}
 			
 			Gson gson = new Gson();
-			String json = gson.toJson(trip);
+			String tripJson = gson.toJson(trip);
 			
-			return json;
+			return tripJson;
 		}
 		
 		pendingResponse result;
@@ -341,9 +456,7 @@ public class YokweServlet extends HttpServlet {
 
 			}
 
-		}
-		
-		else
+		}else
 			return null;
 		/*
 		else{
@@ -392,25 +505,88 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
-	//Notify driver that a rider has requested them
-	private void driverSelection(String driverID, String riderID, String addedTime, int price){
+	//Notify driver that a rider has requested them. The rider selected the driver and is the one submitting this http request
+	private void driverSelection(String driverID, String riderID, String addedTime, int price, HttpServletRequest request){
+		
+		System.out.println("added time == " + addedTime);
 		
 		//Create pendingResponse using info from rider and driver
 		dbController.createPendingResponse(riderID, driverID, addedTime, price, "ride");		
-		sendNotification(driverID, "You have received a ride request.");
+		sendNotification(driverID, "You have received a ride request.");		
+		
+		//Create a trip from the attached stuff
+		Trip trip = new Trip();
+		trip.riderID = riderID;
+		trip.driverID = driverID;
+		trip.id = Integer.parseInt(request.getParameter("tripID"));
+		trip.addedTime = Double.parseDouble(addedTime);
+		trip.price = price;
+		trip.requesteeTripID = Integer.parseInt(request.getParameter("requesteeTripID"));
+		trip.requestType = "ride";
+		trip.status = "pendingResponse";
+		
+		Trip riderTrip = new Trip();
+		Trip driverTrip = new Trip();
+		
+		driverTrip = dbController.getTrip(trip.requesteeTripID);
+		riderTrip = dbController.getTrip(trip.id);
+		
+		trip.dOrigin = driverTrip.dOrigin;
+		trip.dDestination = driverTrip.dDestination;
+		trip.rOrigin = riderTrip.rOrigin;
+		trip.rDestination = riderTrip.rDestination;
+		trip.riderDuration = riderTrip.duration;
+		
+		//recalculate and add distance and duration info to trip
+		trip.addTripInfo();
+		
+		dbController.updateTrip(trip);
+		
 		
 	}
 	
 	//Notify rider that they have been requested by a driver
-	private void riderSelection(String riderID, String driverID, String addedTime, int price){
+	private void riderSelection(String riderID, String driverID, String addedTime, int price, HttpServletRequest request){
 		
-		//Create trip using info from rider and driver
+		//This is being phased out
+		//Create pendingResponse using info from rider and driver -- 
 		dbController.createPendingResponse(driverID, riderID, addedTime, price, "drive");
+		
+		//Create trip object from parameters
+		Trip trip = new Trip();
+		trip.riderID = riderID;
+		trip.driverID = driverID;
+		trip.id = Integer.parseInt(request.getParameter("tripID"));
+		trip.addedTime = Integer.parseInt(addedTime);
+		trip.price = price;
+		trip.requesteeTripID = Integer.parseInt(request.getParameter("requesteeTripID"));
+		trip.requestType = "drive";
+		trip.status = "pendingResponse";
+		
+		Trip riderTrip = new Trip();
+		Trip driverTrip = new Trip();
+		
+		driverTrip = dbController.getTrip(trip.id);
+		riderTrip = dbController.getTrip(trip.requesteeTripID);
+		
+		trip.dOrigin = driverTrip.dOrigin;
+		trip.dDestination = driverTrip.dDestination;
+		trip.rOrigin = riderTrip.rOrigin;
+		trip.rDestination = riderTrip.rDestination;
+		trip.riderDuration = riderTrip.duration;
+		
+		//recalculate and add distance and duration info to trip (probably could/should recalculate price here too)
+		trip.addTripInfo();
+		
+		dbController.updateTrip(trip);
+		
 		sendNotification(riderID, "You have been offered a ride.");
 		
 	}
 	
 	private void rideHandler(HttpServletRequest request, HttpServletResponse response, String userID, String accessToken) throws ServletException, IOException {
+		
+		System.out.println("Got into ride handler");
 		
 		String origin = request.getParameter("origin");
 		String destination = request.getParameter("destination");	
@@ -418,12 +594,16 @@ public class YokweServlet extends HttpServlet {
 		
 		Rider rider = new Rider(userID, accessToken, apns, origin, destination, null);
 		
+		//Create a new trip here
+		Trip trip = dbController.createTripFromRideRequest(rider);
+		System.out.println(trip.id);
+		
 		storeRider(rider); //Store the ride request in the database
 		loadDrivers(); //Load the drivers into the driver list
 		
 		//Prints the user IDs of the drivers to the response
-		String drivers = rideMatch(rider);
-		response.getWriter().print(drivers);
+		String drivers = rideMatchWithTrips(trip);
+		response.getWriter().print(trip.id + "_" + drivers);
 		
 	}
 	
@@ -435,12 +615,15 @@ public class YokweServlet extends HttpServlet {
 		String apns = request.getParameter("apnsToken");
 		Driver driver = new Driver(userID, accessToken, apns, limit, origin, destination);
 		
+		//Create a new trip
+		Trip trip = dbController.createTripFromDriveRequest(driver);
+		
 		storeDriver(driver);
 		loadRiders(); //Load the riders into the rider list
 		
 		//Prints the user IDs of the drivers to the response
-		String riders = driveMatch(driver);
-		response.getWriter().print(riders);
+		String riders = driveMatchWithTrips(trip);
+		response.getWriter().print(trip.id + "_" + riders);
 		
 	}
 	
@@ -480,6 +663,139 @@ public class YokweServlet extends HttpServlet {
 		
 	}
 	
+private String driveMatchWithTrips(Trip driverTrip){
+		
+		String returnString = "";
+		
+		ArrayList<Trip> rideRequests = dbController.getAllRideRequests();
+		
+		//In order to access the API
+		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		
+		DirectionsRoute[] routes;
+		long seconds;
+		long distance;
+		
+		// For every trip in the system with status "driveRequest", check if the rider is within 100 miles of track. This heuristic will be decreased as the userbase grows.
+		for (Trip riderTrip : rideRequests) {
+			if(Math.abs(DistanceHelper.crossTrack(riderTrip, driverTrip)) < 100){
+				try {
+					//Get the route distance for when the driver picks up the rider
+					routes = DirectionsApi.newRequest(context).origin(driverTrip.dOrigin)
+							.destination(driverTrip.dDestination).waypoints(riderTrip.rOrigin, riderTrip.rDestination)
+							.await();
+
+					seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+							+ routes[0].legs[2].duration.inSeconds;
+
+					distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+							+ routes[0].legs[2].distance.inMeters;
+
+					int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+					int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+
+					// This is checking to see that the amount of time the driver must go out of their way
+					// is less than their set limit (for now it is set to 30 minutes for everyone)
+					if (seconds - driverTrip.duration <= 30 * 60 && !driverTrip.driverID.equals(riderTrip.riderID)) {
+						User uu = dbController.getUser(riderTrip.riderID);
+
+						//return addedTime in minutes
+						int addedTime = (int)((seconds - driverTrip.duration)/60);
+
+						int addedDistance = (int)(distance/1609.344 - driverTrip.distance);
+						
+						System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+						int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+
+						String mutualFriends = "0";
+						if (uu.accessToken != null){
+							mutualFriends = FacebookHelper.getNumberOfMutualFriends(uu.accessToken, driverTrip.riderID);	
+						}
+
+						//userID;accessToken;addedTime;mutualFriends;price_
+						returnString += riderTrip.riderID + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price + ";" + uu.aboutMe + ";" + uu.name + ";"  + riderTrip.id + "_";
+					}
+
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+				}
+			}
+		}
+
+		return returnString;
+		
+	}
+	private String rideMatchWithTrips(Trip riderTrip){
+		
+		String returnString = "";
+		
+		ArrayList<Trip> driveRequests = dbController.getAllDriveRequests();
+		
+		//In order to access the API
+		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		
+		DirectionsRoute[] routes;
+		long seconds;
+		long distance;
+		
+		// For every trip in the system with status "driveRequest", check if the rider is within 100 miles of track. This heuristic will be decreased as the userbase grows.
+		for (Trip driverTrip : driveRequests) {			
+			if(Math.abs(DistanceHelper.crossTrack(riderTrip, driverTrip)) < 100){
+				try {
+					//Get the route distance for when the driver picks up the rider
+					routes = DirectionsApi.newRequest(context).origin(driverTrip.dOrigin)
+							.destination(driverTrip.dDestination).waypoints(riderTrip.rOrigin, riderTrip.rDestination)
+							.await();
+					
+					System.out.println(driverTrip.dOrigin);
+					System.out.println(driverTrip.dDestination);
+
+					seconds = routes[0].legs[0].duration.inSeconds + routes[0].legs[1].duration.inSeconds
+							+ routes[0].legs[2].duration.inSeconds;
+
+					distance = routes[0].legs[0].distance.inMeters + routes[0].legs[1].distance.inMeters
+							+ routes[0].legs[2].distance.inMeters;
+
+					int riderTime = (int) (routes[0].legs[1].duration.inSeconds/60);
+					int riderDistance = (int) (routes[0].legs[1].distance.inMeters/1609.344);
+
+					// This is checking to see that the amount of time the driver must go out of their way
+					// is less than their set limit (for now it is set to 30 minutes for everyone)
+					if (seconds - driverTrip.duration <= (30 * 60) && !driverTrip.driverID.equals(riderTrip.riderID)) {
+						User uu = dbController.getUser(driverTrip.driverID);
+						
+						//return addedTime in minutes
+						int addedTime = (int)((seconds - driverTrip.duration)/60);
+
+						//return distance in miles (seconds and meters are too precise for the app's design)
+						int addedDistance = (int)(distance/1609.344 - driverTrip.distance);
+
+						System.out.println(addedTime + " " + addedDistance + " " + riderTime + " " + riderDistance);
+						int price = getPrice(addedTime, addedDistance, riderTime, riderDistance);
+
+						String mutualFriends = "0";
+						if (uu.accessToken != null){
+							mutualFriends = FacebookHelper.getNumberOfMutualFriends(uu.accessToken, riderTrip.riderID);	
+						}
+
+						//userID;accessToken;addedTime;mutualFriends;price_
+						returnString += driverTrip.driverID + ";" + uu.accessToken + ";" + addedTime + ";" + mutualFriends + ";" + price
+								+ ";" + uu.aboutMe + ";" + uu.name + ";" + driverTrip.id + "_";
+					}
+
+				} catch (Exception e) {
+					// TODO Auto-generated catch block
+					e.printStackTrace();
+					
+				}
+			}
+		}
+
+		return returnString;
+		
+	}
+	
 	private String rideMatch(Rider rider){
 		
 		String returnString = "";
@@ -490,7 +806,7 @@ public class YokweServlet extends HttpServlet {
 		DirectionsRoute[] routes;
 		long seconds;
 		long distance;
-
+		
 		// For every driver in the system, check if the rider is within their
 		// set limit
 		for (Driver driver : drivers) {
@@ -514,6 +830,7 @@ public class YokweServlet extends HttpServlet {
 					// is less than their set limit
 					if (seconds - driver.getDuration() <= driver.getLimit() * 60 && !driver.getID().equals(rider.getID())) {
 						User uu = dbController.getUser(driver.getID());
+						
 
 						int addedTime = (int)((seconds - driver.getDuration())/60);
 						//int riderTime = (int) (seconds/60 - addedTime);
@@ -639,7 +956,7 @@ public class YokweServlet extends HttpServlet {
 				BasicAWSCredentials credentials = new BasicAWSCredentials("AKIAJMAG65OXWWYGREDA", "mPsfVzS3cJ33e5C0oGRGcUOQV7sF02m9sABsJBCc");
 				AmazonS3 s3Client = new AmazonS3Client(credentials);        
 				S3Object object = s3Client.getObject(
-				                  new GetObjectRequest("elasticbeanstalk-us-west-2-242898210520", "certificate.p12"));
+				                  new GetObjectRequest("elasticbeanstalk-us-west-1-242898210520", "certificate.p12"));
 				InputStream objectData = object.getObjectContent();
 				
 				service = APNS.newService()

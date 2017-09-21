@@ -93,9 +93,7 @@ public class StripeHelper {
 	}
 	
 	//Requires full name, address, birthday, last 4, tos acceptance date and ip
-	public String createManagedAccount(String firstName, String lastName,
-			String line1, String line2, String city, String state, 
-			String zip, int day, int month, int year, String last4, String ip){
+	public String createCustomAccount(String firstName, String lastName, int day, int month, int year, String ip){
 		
 		try {
 			Stripe.apiKey = STRIPE_KEY;
@@ -106,15 +104,9 @@ public class StripeHelper {
 			accountParams.put("legal_entity[type]", "individual");
 			accountParams.put("legal_entity[first_name]", firstName);
 			accountParams.put("legal_entity[last_name]", lastName);
-			accountParams.put("legal_entity[address][line1]", line1);
-			accountParams.put("legal_entity[address][line2]", line2);
-			accountParams.put("legal_entity[address][city]", city);
-			accountParams.put("legal_entity[address][state]", state);
-			accountParams.put("legal_entity[address][postal_code]", zip);
 			accountParams.put("legal_entity[dob][day]", day);
 			accountParams.put("legal_entity[dob][month]", month);
 			accountParams.put("legal_entity[dob][year]", year);
-			accountParams.put("legal_entity[ssn_last_4]", last4);
 			
 			Date d = new Date();
 			accountParams.put("tos_acceptance[date]", (d.getTime()/1000));

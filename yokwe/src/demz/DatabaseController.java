@@ -657,6 +657,74 @@ public class DatabaseController {
 		
 	}
 	
+	public ArrayList<Trip> getAllDriveRequests(){
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		ArrayList<Trip> driveRequests = new ArrayList<Trip>();
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT id FROM trip WHERE status = 'driveRequest'");			
+			rs = pstmt.executeQuery();
+			
+			while(rs.next()){
+				Trip driverTrip = getTrip(rs.getInt("id"));
+				driveRequests.add(driverTrip);
+			}
+			
+			return driveRequests;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+		
+	}
+	
+	public ArrayList<Trip> getAllRideRequests(){
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		ArrayList<Trip> rideRequests = new ArrayList<Trip>();
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT id FROM trip WHERE status = 'rideRequest'");			
+			rs = pstmt.executeQuery();
+			
+			while(rs.next()){
+				Trip riderTrip = getTrip(rs.getInt("id"));
+				rideRequests.add(riderTrip);
+			}
+			
+			return rideRequests;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+		
+	}
+	
 	public ArrayList<Driver> getAllDrivers(){
 		ArrayList<Driver> driverList= new ArrayList<Driver>();		
 		ResultSet rs = null;
@@ -950,6 +1018,85 @@ public class DatabaseController {
 		}
 	}
 	
+	//Create an entry in the trip table when a rider makes a ride request
+	public Trip createTripFromRideRequest(Rider rider){
+		java.sql.Statement stmt = null;
+		ResultSet rs = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			
+			//Store values into a new trip
+			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO trip (riderID, rOrigin, rDestination, duration, status) VALUES "
+					+ "(?, ?, ?, ?, ?);");
+			
+			pstmt.setString(1, rider.getID());
+			pstmt.setString(2, rider.getOrigin());
+			pstmt.setString(3, rider.getDestination());
+			pstmt.setLong(4, rider.duration);
+			pstmt.setString(5, "rideRequest");
+			pstmt.executeUpdate();
+			
+			//return the newly created trip
+			int tripID = getTripIDOfLastRequest(rider.getID());
+			Trip trip = getTrip(tripID);
+			return trip;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+		return null;
+		
+	}
+	
+	//Create an entry in the trip table when a driver offers a ride
+	public Trip createTripFromDriveRequest(Driver driver){
+		java.sql.Statement stmt = null;
+		ResultSet rs = null;
+		Connection conn = null;
+		try {
+			
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			
+			//Store values into a new trip
+			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO trip (driverID, dOrigin, dDestination, duration, status) VALUES "
+					+ "(?, ?, ?, ?, ?);");
+			
+			pstmt.setString(1, driver.getID());
+			pstmt.setString(2, driver.getOrigin());
+			pstmt.setString(3, driver.getDestination());
+			pstmt.setLong(4, driver.getDuration());
+			pstmt.setString(5, "driveRequest");
+			pstmt.executeUpdate();
+			
+			//return the tripID of the new trip.
+			//return the newly created trip
+			//return the newly created trip
+			int tripID = getTripIDOfLastRequest(driver.getID());
+			Trip trip = getTrip(tripID);
+			return trip;
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+		return null;
+		
+	}
+	
 	public void createTrip(String requesterID, String requesteeID){
 		java.sql.Statement stmt = null;
 		ResultSet rs = null;
@@ -1019,7 +1166,7 @@ public class DatabaseController {
 			
 			//Store values into a new trip
 			PreparedStatement pstmt = conn.prepareStatement("INSERT INTO trip (riderID, driverID, "
-					+ "dOrigin, dDestination, rOrigin, rDestination, duration, price, riderDuration, addedTime, length) VALUES "
+					+ "dOrigin, dDestination, rOrigin, rDestination, duration, price, riderDuration, addedTime, distance) VALUES "
 					+ "(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);");
 			
 			pstmt.setString(1, riderID);
@@ -1062,6 +1209,292 @@ public class DatabaseController {
 		
 	}
 	
+	//Update trip type to pendingResponse when a driver/rider selection is made. Requires trip ID
+	//This is really just updating a trip. This will be changed to updateTrip at some point
+	public void updateTrip(Trip tripInfo){
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		PreparedStatement pstmt = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			
+			//Update the Trip with type "request" to "pendingResponse" and add the different variables in.
+			pstmt = conn.prepareStatement("UPDATE trip SET riderID = ?, driverID= ?, dOrigin = ?, dDestination = ?, "
+					+ "rOrigin = ?, rDestination = ?, duration = ?, distance = ?, addedTime = ?, price = ?, riderDuration = ?, "
+					+ "status = ?, requestType = ?, requesteeTripID = ? WHERE id = ?;");
+			
+			pstmt.setString(1, tripInfo.riderID);
+			pstmt.setString(2, tripInfo.driverID);
+			pstmt.setString(3, tripInfo.dOrigin);
+			pstmt.setString(4, tripInfo.dDestination);
+			pstmt.setString(5, tripInfo.rOrigin);
+			pstmt.setString(6, tripInfo.rDestination);
+			pstmt.setLong(7, tripInfo.duration);
+			pstmt.setLong(8, tripInfo.distance); //distance
+			pstmt.setDouble(9, tripInfo.addedTime);
+			pstmt.setInt(10, tripInfo.price);
+			pstmt.setLong(11, tripInfo.riderDuration);
+			pstmt.setString(12, tripInfo.status);
+			pstmt.setString(13, tripInfo.requestType);
+			pstmt.setInt(14, tripInfo.requesteeTripID);
+			pstmt.setInt(15, tripInfo.id);
+			
+			pstmt.executeUpdate();
+
+
+		} catch (SQLException e) {
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+		}
+	}
+	
+	//return any requests awaiting a response from the user
+	public Trip getPendingResponse(String userID){
+		Trip trip = new Trip();
+		
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT * FROM trip WHERE riderID = ? OR driverID = ?");
+			pstmt.setString(1, userID);
+			pstmt.setString(2, userID);
+			
+			rs = pstmt.executeQuery();
+			
+			while(rs.next()){
+				String status = rs.getString("status");
+				String requestType = rs.getString("requestType");
+				String riderID = rs.getString("riderID");
+				String driverID = rs.getString("driverID");
+				
+				if (status.equals("pendingResponse")){
+					if(requestType.equals("ride") && userID.equals(riderID)){
+						int id = rs.getInt("id");
+						return getTrip(id);
+						
+					}if(requestType.equals("drive") && userID.equals(driverID)){
+						int id = rs.getInt("id");
+						return getTrip(id);
+						
+					}
+					
+				}
+				
+			}
+			
+			return trip;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+	}
+	
+	//return any requests awaiting a response from the user
+	public Trip getActiveTrip(String userID){
+		Trip trip = new Trip();
+		
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT * FROM trip WHERE riderID = ? OR driverID = ?");
+			pstmt.setString(1, userID);
+			pstmt.setString(2, userID);
+			
+			rs = pstmt.executeQuery();
+			
+			while(rs.next()){
+				String status = rs.getString("status");
+				if (status.equals("leg1") || status.equals("leg2")){
+					int id = rs.getInt("id");
+					return getTrip(id);
+					
+				}
+				
+			}
+			
+			return trip;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+	}
+
+	//return every trip in the DB for a given user
+	public ArrayList<Trip> getAllTrips(String userID){
+		ArrayList<Trip> trips = new ArrayList<Trip>();
+		
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT * FROM trip WHERE riderID = ? or driverID = ?");
+			pstmt.setString(1, userID);
+			pstmt.setString(2, userID);
+			
+			rs = pstmt.executeQuery();
+			while(rs.next()){
+				Trip trip = new Trip();
+				
+				trip.id = rs.getInt("id");
+				trip.requesteeTripID = rs.getInt("requesteeTripID");
+				trip.riderID = rs.getString("riderID");
+				trip.driverID = rs.getString("driverID");
+				trip.dOrigin = rs.getString("dOrigin");
+				trip.dDestination = rs.getString("dDestination");
+				trip.rOrigin = rs.getString("rOrigin");
+				trip.rDestination = rs.getString("rDestination");
+				trip.status = rs.getString("status");
+				trip.duration = rs.getInt("duration");
+				trip.riderDuration = rs.getInt("riderDuration");
+				trip.distance = rs.getLong("distance");
+				trip.price = rs.getInt("price");
+				trip.addedTime = rs.getDouble("addedTime");
+				trip.requestType = rs.getString("requestType");
+				
+				//Don't add active trips or responses pending this users request
+				if (trip.status.equals("leg1") || trip.status.equals("leg2")){
+					continue;
+
+				}else if (trip.status.equals("pendingResponse")){
+					if(trip.requestType.equals("drive") && userID.equals(trip.riderID)){
+						continue;
+						
+					}if(trip.requestType.equals("ride") && userID.equals(trip.driverID)){
+						continue;
+						
+					}
+					
+				}
+				
+				trips.add(trip);
+				
+			}
+			
+			return trips;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+		
+	}
+	
+	public Trip getTrip(int tripID){
+		Trip trip = new Trip();
+		
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+
+			pstmt = conn.prepareStatement("SELECT * FROM trip WHERE id = ?");
+			pstmt.setInt(1, tripID);
+			
+			rs = pstmt.executeQuery();
+			rs.next();
+			
+			trip.id = tripID;
+			trip.requesteeTripID = rs.getInt("requesteeTripID");
+			trip.riderID = rs.getString("riderID");
+			trip.driverID = rs.getString("driverID");
+			trip.dOrigin = rs.getString("dOrigin");
+			trip.dDestination = rs.getString("dDestination");
+			trip.rOrigin = rs.getString("rOrigin");
+			trip.rDestination = rs.getString("rDestination");
+			trip.status = rs.getString("status");
+			trip.duration = rs.getInt("duration");
+			trip.riderDuration = rs.getInt("riderDuration");
+			trip.distance = rs.getLong("distance");
+			trip.price = rs.getInt("price");
+			trip.addedTime = rs.getDouble("addedTime");
+			trip.requestType = rs.getString("requestType");
+			
+			return trip;
+			
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+			
+		}
+		return null;
+		
+	}
+	
+	//Get last trip request ID for a user.
+	public int getTripIDOfLastRequest(String userID){
+		ResultSet rs = null;
+		PreparedStatement pstmt = null;
+		Connection conn = null;
+		
+		try {
+			conn = dataSource.getConnection();
+			
+			pstmt = conn.prepareStatement("SELECT MAX(id) as id FROM demzdb.trip WHERE riderID= ? OR driverID = ?;");
+			pstmt.setString(1, userID);
+			pstmt.setString(2, userID);
+			
+			rs = pstmt.executeQuery();
+			rs.next();
+			
+			return rs.getInt("id");
+			
+		} catch (SQLException e) {
+			e.printStackTrace();
+			
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(pstmt);
+			DbUtils.closeQuietly(conn);
+		}
+		
+		return -1;
+	}
+	
 	public void createPendingResponse(String requesterID, String requesteeID, String addedTime, int price, String type){
 		java.sql.Statement stmt = null;
 		Connection conn = null;
@@ -1070,7 +1503,7 @@ public class DatabaseController {
 			conn = dataSource.getConnection();
 			stmt = conn.createStatement();
 			
-			//Store values into a new trip
+			//Update the Trip with type "request" to "pendingResponse" and add the different variables in.
 			stmt.executeUpdate("REPLACE INTO pendingResponse (requesterID, requesteeID, requestType, addedTime, price) VALUES "
 					+ "('" + requesterID + "', '" + requesteeID + "', '" + type
 					+ "', '" + (long)Double.parseDouble(addedTime) + "', '" + price + "');");
@@ -1186,7 +1619,7 @@ public class DatabaseController {
 				String driverID = rs.getString("driverID");
 				
 				trip.rider = new Rider(riderID, rs.getString("rOrigin"), rs.getString("rDestination"), rs.getLong("riderDuration"), getUser(riderID).customerToken);
-				trip.driver = new Driver(driverID, 30, rs.getString("dOrigin"), rs.getString("dDestination"), rs.getLong("duration"), rs.getInt("length"), getUser(driverID).accountToken);
+				trip.driver = new Driver(driverID, 30, rs.getString("dOrigin"), rs.getString("dDestination"), rs.getLong("duration"), rs.getInt("distance"), getUser(driverID).accountToken);
 				
 				trip.rider.accessToken = getAccessToken(riderID);
 				trip.driver.accessToken = getAccessToken(driverID);
@@ -1256,6 +1689,9 @@ public class DatabaseController {
 		
 		return null;
 	}
+	
+	//Return a list of rideRequests in the form of a trip that the user has made
+	
 	
 	//Returns any requests in the queue, returns empty string if none exist, null if error occurred
 	public RideRequest getRideRequest(String userID){
@@ -1351,4 +1787,66 @@ public class DatabaseController {
 		
 		return null;
 	}
+	
+	
+	//Delete a trip/request from the DB
+	public void deleteTrip(String id, String userID){
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		try{
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			
+			stmt.executeUpdate("DELETE FROM trip WHERE id ='"+ id +"';");
+			
+		} catch (SQLException e){
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+	}
+	
+	//Returns a list of pendingResponses sent by a user in the form of trips
+	public ArrayList<Trip> getAllPendingResponses(String userID){
+		java.sql.Statement stmt = null;
+		Connection conn = null;
+		ResultSet rs = null;
+		ArrayList<Trip> tripList = new ArrayList<Trip>();
+		
+		try {
+			conn = dataSource.getConnection();
+			stmt = conn.createStatement();
+			rs = stmt.executeQuery("SELECT * FROM pendingResponse WHERE requesterID='" + userID + "';");
+			
+			//Iterate through list of all returned pendingResponses
+			while(rs.next()){
+				Trip trip = new Trip();
+				
+				//Get rider and driver from here. Need if else logic
+				
+				trip.addedTime = rs.getLong("addedTime");
+				trip.requestType = rs.getString("requestType"); //ride or drive
+				trip.type = rs.getString("type"); //pendingResponse
+				trip.price = rs.getInt("price");
+				
+				tripList.add(trip);
+			}
+			
+			return null;
+		} catch (SQLException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}finally{
+			DbUtils.closeQuietly(rs);
+			DbUtils.closeQuietly(stmt);
+			DbUtils.closeQuietly(conn);
+
+		}
+		
+		return null;
+	}
+	
+	
 }

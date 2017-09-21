@@ -1,11 +1,27 @@
 package demz;
 
 public class DistanceHelper {
+	
+	public static double crossTrack(Trip riderTrip, Trip driverTrip){
+		String[] driverStart = driverTrip.dOrigin.split(",");
+		String[] driverEnd = driverTrip.dDestination.split(",");
+		String[] riderStart = riderTrip.rOrigin.split(",");
+		
+		//Convert the stored origin and destination strings into latlong doubles
+			
+		double lat1 = Double.parseDouble(driverStart[0]); 
+		double lat2 = Double.parseDouble(driverEnd[0]);
+		double lat3 = Double.parseDouble(riderStart[0]);
+		double lon1 = Double.parseDouble(driverStart[1]);
+		double lon2 = Double.parseDouble(driverEnd[1]);
+		double lon3 = Double.parseDouble(riderStart[1]);
+		
+		//Return xtrack distance in miles
+		return crossTrack(lat1,lat2,lat3,lon1,lon2,lon3)/1600;
+		
+	}
 
 	public static double getCrossTrackFromDriverAndRider(Driver driver, Rider rider){
-		System.out.println(driver.getID());
-		System.out.println(rider.getID());
-
 		String[] driverStart = driver.getOrigin().split(",");
 		String[] driverEnd = driver.getDestination().split(",");
 		String[] riderStart = rider.getOrigin().split(",");

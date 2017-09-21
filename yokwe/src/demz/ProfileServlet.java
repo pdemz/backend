@@ -160,35 +160,29 @@ public class ProfileServlet extends HttpServlet {
 		}else if (type.equals("updatePhone")){
 			String phone = request.getParameter("phone");
 			dbController.updatePhone(id, phone);
-			
-		}else if (type.equals("createStripeAccount")){
+		
+		//Call to create a new Stripe Custom Account on behalf of a new driver
+		}else if (type.equals("createStripeAccount")){			
 			String ip = request.getRemoteAddr();
 			String firstName = request.getParameter("firstName");
 			String lastName = request.getParameter("lastName");
 			int day = Integer.parseInt(request.getParameter("day"));
 			int month = Integer.parseInt(request.getParameter("month"));
 			int year = Integer.parseInt(request.getParameter("year"));
-			String line1Param = request.getParameter("line1");
-			String line1 = line1Param.replace("+", " ");
-			String line2 = request.getParameter("line2");
-			String city = request.getParameter("city");
-			String state = request.getParameter("state");
-			String zip = request.getParameter("zip");
-			String last4 = request.getParameter("last4");
 			
 			//Generate account token
 			StripeHelper sh = new StripeHelper();
-			String accountToken = sh.createManagedAccount(firstName, lastName, line1, line2, city, 
-					state, zip, day, month, year, last4, ip);
+			String accountToken = sh.createCustomAccount(firstName, lastName, day, month, year, ip);
 			
+			System.out.println("Your brand spankin new account token is: " + accountToken);
 			//Store account token with user
 			User uu = new User();
 			uu.accountToken = accountToken;
 			uu.id = id;
 			dbController.storeUser(uu);
 			
-			response.getWriter().println(accountToken);
-			
+			//Send the account token to the client
+			response.getWriter().print(accountToken);
 			
 		}else if (type.equals("addBankAccount")){
 			StripeHelper sh = new StripeHelper();

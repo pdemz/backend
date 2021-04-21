@@ -670,7 +670,7 @@ private String driveMatchWithTrips(Trip driverTrip){
 		ArrayList<Trip> rideRequests = dbController.getAllRideRequests();
 		
 		//In order to access the API
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
 		DirectionsRoute[] routes;
 		long seconds;
@@ -733,7 +733,7 @@ private String driveMatchWithTrips(Trip driverTrip){
 		ArrayList<Trip> driveRequests = dbController.getAllDriveRequests();
 		
 		//In order to access the API
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
 		DirectionsRoute[] routes;
 		long seconds;
@@ -801,7 +801,7 @@ private String driveMatchWithTrips(Trip driverTrip){
 		String returnString = "";
 		
 		//In order to access the API
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
 		DirectionsRoute[] routes;
 		long seconds;
@@ -866,7 +866,7 @@ private String driveMatchWithTrips(Trip driverTrip){
 		String returnString = "";
 
 		//In order to access the API
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 
 		DirectionsRoute[] routes;
 		long seconds;

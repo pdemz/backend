@@ -32,7 +32,7 @@ public class Trip {
 	
 	public void addTripInfo(){
 		//access the API
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 				
 		DirectionsRoute[] routes;
 		

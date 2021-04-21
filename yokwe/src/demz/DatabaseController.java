@@ -22,12 +22,12 @@ public class DatabaseController {
 	
 	public DatabaseController(){
 		dataSource = new MysqlDataSource();
-		dataSource.setUser("demz");
-		dataSource.setPassword("Iheartnewyork!1");
-		dataSource.setServerName("atlasdb.cptwy6lrapgs.us-west-1.rds.amazonaws.com");
-		//dataSource.setServerName("eastcoast.cekfwxanl7gp.us-east-1.rds.amazonaws.com");
-		dataSource.setDatabaseName("demzdb");
-		dataSource.setPort(3306);
+		dataSource.setUser("###");
+		dataSource.setPassword("###");
+		dataSource.setServerName("###");
+		//dataSource.setServerName("###");
+		dataSource.setDatabaseName("###");
+		dataSource.setPort(###);
 		
 	}
 	

@@ -19,8 +19,8 @@ import java.util.*;
 
 public class StripeHelper {
 	
-	private String STRIPE_KEY = "sk_live_F1gOogzs0M1aFqkAzVralu0d";
-	//private String STRIPE_KEY = "sk_test_1uQrp6jYPTGLGaacEjTr0rGj";
+	private String STRIPE_KEY = "###";
+	//private String STRIPE_KEY = "###";
 	
 	public String makePayment(String connectID, String customerID, int amount){
 		Stripe.apiKey = STRIPE_KEY;

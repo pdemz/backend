@@ -71,7 +71,7 @@ public class YokweServlet extends HttpServlet {
 		String userID = request.getParameter("userID");
 		String accessToken = request.getParameter("accessToken");
 		
-		//PhoneHelper ph = new PhoneHelper("302-270-6805", "send", null);
+		//PhoneHelper ph = new PhoneHelper("###", "send", null);
 		
 		//Authentication
 		if(userID != null && !FacebookHelper.authenticated(accessToken, userID)){
@@ -953,16 +953,16 @@ private String driveMatchWithTrips(Trip driverTrip){
 			try {
 				
 				//Get apns certificate from S3 bucket
-				BasicAWSCredentials credentials = new BasicAWSCredentials("AKIAJMAG65OXWWYGREDA", "mPsfVzS3cJ33e5C0oGRGcUOQV7sF02m9sABsJBCc");
+				BasicAWSCredentials credentials = new BasicAWSCredentials("###", "###");
 				AmazonS3 s3Client = new AmazonS3Client(credentials);        
 				S3Object object = s3Client.getObject(
-				                  new GetObjectRequest("elasticbeanstalk-us-west-1-242898210520", "certificate.p12"));
+				                  new GetObjectRequest("###", "###"));
 				InputStream objectData = object.getObjectContent();
 				
 				service = APNS.newService()
-				.withCert(objectData, "presten")
-				//.withCert(resourceURL.getPath(), "presten")
-				//.withCert(new FileInputStream("/home/demz/Downloads/backup stuff/certificate.p12"), "presten2")
+				.withCert(objectData, "###")
+				//.withCert(resourceURL.getPath(), "###")
+				//.withCert(new FileInputStream("/home/demz/Downloads/backup stuff/certificate.p12"), "###")
 				.withProductionDestination()
 				.build();
 				

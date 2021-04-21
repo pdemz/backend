@@ -64,7 +64,7 @@ public class PhoneHelper{
 
 	private void sendSMSMessage(String message, 
 			String phoneNumber) {
-			BasicAWSCredentials credentials = new BasicAWSCredentials("AKIAJMAG65OXWWYGREDA", "mPsfVzS3cJ33e5C0oGRGcUOQV7sF02m9sABsJBCc");
+			BasicAWSCredentials credentials = new BasicAWSCredentials("###", "###");
 			AmazonSNSClient snsClient = new AmazonSNSClient(new AWSStaticCredentialsProvider(credentials));
 	        PublishResult result = snsClient.publish(new PublishRequest()
 	                        .withMessage(message)

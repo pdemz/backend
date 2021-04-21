@@ -10,7 +10,7 @@ import com.google.maps.model.LatLng;
 public class MapsHelper{
 	
 	public static String addressFromCoordinateString(String coordinateString){
-        GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
+        GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
         LatLng coordinates = getLatLngFromCoordinates(coordinateString);
         
@@ -29,7 +29,7 @@ public class MapsHelper{
 	}
 	
 	public static String localityFromCoordinateString(String coordinateString){
-        GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
+        GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
         LatLng coordinates = getLatLngFromCoordinates(coordinateString);
         

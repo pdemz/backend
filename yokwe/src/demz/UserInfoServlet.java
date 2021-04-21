@@ -39,7 +39,7 @@ public class UserInfoServlet extends HttpServlet {
 		// TODO Auto-generated method stub        
         String type = request.getParameter("type");
 
-        GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyC5BL3tnMx8WrCabEGg6Ebx--f6fDraHzg");
+        GeoApiContext context = new GeoApiContext().setApiKey("###");
         
         if(type.equals("queue")){
         	printQueues(response);
@@ -74,7 +74,7 @@ public class UserInfoServlet extends HttpServlet {
 	}
 	
 	private void printQueues(HttpServletResponse response) throws IOException{
-        GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
+        GeoApiContext context = new GeoApiContext().setApiKey("###");
 		
     	ArrayList<Rider> riderList = dbController.getAllRiders();
     	ArrayList<Driver> driverList = dbController.getAllDrivers();

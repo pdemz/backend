@@ -41,7 +41,7 @@ public class Rider {
 		driverID = newDriverID;
 
 		//Get origin and destination coordinates. There's probably a better way to do this.
-		GeoApiContext context = new GeoApiContext().setApiKey("AIzaSyBrmvso2zVY_soF75Een6sI8sA5f0yGw5s");
+		GeoApiContext context = new GeoApiContext().setApiKey("###");
 
 		DirectionsRoute[] routes;
 		try {
